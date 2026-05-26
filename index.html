@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bedtime Schedule</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Lato:wght@300;400;700&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #1c1c1e;
+    --mid: #555566;
+    --light: #888899;
+    --accent: #4a4aaa;
+    --gold: #7a5800;
+    --bath: #1a60b8;
+    --nobath: #5050a0;
+    --page: #ededf4;
+    --card: #ffffff;
+    --border: #d0d0dc;
+    --input: #f4f4f8;
+    --warn: #b84a1a;
+    --ok: #1a8a4a;
+  }
+
+  body {
+    background: var(--page);
+    font-family: 'Lato', sans-serif;
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 36px 20px 80px;
+  }
+
+  .max-width { max-width: 480px; margin: 0 auto; }
+
+  header { text-align: center; margin-bottom: 32px; }
+  header .icon { font-size: 2.2rem; display: block; margin-bottom: 6px; }
+  header h1 { font-family: 'Playfair Display', serif; font-size: 1.9rem; font-weight: 400; color: var(--ink); }
+  header h1 em { color: var(--accent); font-style: italic; }
+  header p { margin-top: 5px; font-size: 0.74rem; color: var(--mid); letter-spacing: 0.08em; text-transform: uppercase; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 22px;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+
+  .card-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--mid);
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+
+  input[type="time"] {
+    background: var(--input);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    color: var(--ink);
+    font-family: 'Lato', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 400;
+    padding: 9px 14px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input[type="time"]:focus { border-color: var(--accent); }
+
+  .age-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .age-display { font-size: 1.1rem; font-weight: 700; color: var(--accent); }
+  .ww-badge { font-size: 0.72rem; color: var(--mid); }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%; height: 4px;
+    border-radius: 4px;
+    background: var(--border);
+    outline: none;
+    margin-top: 4px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  }
+
+  .range-labels { display: flex; justify-content: space-between; margin-top: 5px; }
+  .range-labels span { font-size: 0.65rem; color: var(--light); }
+
+  .toggle-wrap {
+    display: flex;
+    background: var(--input);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 4px; gap: 4px;
+  }
+  .toggle-btn {
+    flex: 1; border: none; border-radius: 9px;
+    padding: 10px 14px;
+    font-family: 'Lato', sans-serif; font-size: 0.88rem; font-weight: 700;
+    cursor: pointer; transition: all 0.2s;
+    color: var(--mid); background: transparent;
+  }
+  .toggle-btn.active-bath   { background: var(--bath);   color: white; box-shadow: 0 2px 8px rgba(26,96,184,0.3); }
+  .toggle-btn.active-nobath { background: var(--nobath); color: white; box-shadow: 0 2px 8px rgba(80,80,160,0.3); }
+
+  /* Dinner suggestion banner */
+  .dinner-banner {
+    background: #f0f0ff;
+    border: 1.5px solid #c0c0e8;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 0.8rem;
+    color: var(--accent);
+    margin-bottom: 14px;
+    display: none;
+  }
+  .dinner-banner.visible { display: block; }
+  .dinner-banner strong { font-weight: 700; }
+
+  /* Timeline */
+  .schedule-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .schedule-title { font-family: 'Playfair Display', serif; font-size: 1.1rem; color: var(--ink); }
+
+  .badge { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; padding: 3px 9px; border-radius: 20px; }
+  .badge-bath   { background: #ddeeff; color: var(--bath);   border: 1.5px solid #b0ccee; }
+  .badge-nobath { background: #e8e8f8; color: var(--nobath); border: 1.5px solid #c0c0e0; }
+
+  .timeline { display: flex; flex-direction: column; }
+
+  .tl-item {
+    display: flex; align-items: flex-start;
+    gap: 14px; padding: 9px 0; position: relative;
+  }
+  .tl-item:not(:last-child)::after {
+    content: ''; position: absolute;
+    left: 57px; top: 32px; bottom: 0;
+    width: 1.5px; background: var(--border);
+  }
+
+  .tl-time {
+    font-size: 0.82rem; font-weight: 700;
+    color: var(--gold); min-width: 52px;
+    text-align: right; padding-top: 2px;
+    font-variant-numeric: tabular-nums; flex-shrink: 0;
+  }
+  .tl-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #c8c8dc; border: 2px solid var(--border);
+    margin-top: 4px; flex-shrink: 0;
+  }
+  .tl-item.key .tl-dot  { background: var(--accent); border-color: var(--accent); width: 12px; height: 12px; box-shadow: 0 0 0 3px rgba(74,74,170,0.12); margin-top: 3px; }
+  .tl-item.key .tl-time  { color: var(--accent); }
+  .tl-item.key .tl-label { font-weight: 700; color: var(--accent); }
+  .tl-item.moon .tl-dot  { background: var(--ink); border-color: var(--ink); width: 12px; height: 12px; margin-top: 3px; }
+  .tl-item.moon .tl-time  { color: var(--ink); }
+  .tl-item.moon .tl-label { font-weight: 700; }
+
+  /* Dinner row highlight */
+  .tl-item.dinner .tl-dot  { background: var(--gold); border-color: var(--gold); width: 12px; height: 12px; margin-top: 3px; }
+  .tl-item.dinner .tl-time  { color: var(--gold); font-size: 0.9rem; }
+  .tl-item.dinner .tl-label { font-weight: 700; color: var(--gold); }
+
+  .tl-content { flex: 1; }
+  .tl-label { font-size: 0.88rem; color: var(--ink); line-height: 1.3; }
+  .tl-note  { font-size: 0.72rem; color: var(--mid); margin-top: 2px; }
+
+  .ww-tip {
+    margin-top: 16px; padding: 11px 15px;
+    border-radius: 10px; font-size: 0.78rem; line-height: 1.5;
+  }
+  .ww-tip.ok    { background: #e8f5ee; border: 1.5px solid #90d0aa; color: #1a5a30; }
+  .ww-tip.short { background: #fff3e0; border: 1.5px solid #f0b860; color: #7a4a00; }
+  .ww-tip.long  { background: #fde8e8; border: 1.5px solid #f0a0a0; color: var(--warn); }
+  .ww-tip strong { font-weight: 700; }
+
+  #schedule { display: none; }
+  #schedule.visible { display: block; }
+</style>
+</head>
+<body>
+<div class="max-width">
+
+  <header>
+    <span class="icon">🌙</span>
+    <h1>Tonight's <em>Bedtime</em> Schedule</h1>
+    <p>Dinner anytime 5:45–6:45 · 20 min to eat</p>
+  </header>
+
+  <div class="card">
+    <div class="card-label">Last Nap Ended At</div>
+    <input type="time" id="napEnd" value="17:00" />
+  </div>
+
+  <div class="card">
+    <div class="card-label">Baby's Age</div>
+    <div class="age-row">
+      <div class="age-display" id="ageLabel">13 weeks</div>
+      <div class="ww-badge" id="wwBadge">Wake window: 75–90 min</div>
+    </div>
+    <input type="range" id="ageSlider" min="12" max="26" value="13" step="1" oninput="onSlider()" />
+    <div class="range-labels"><span>12 wks</span><span>26 wks</span></div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Tonight's Routine</div>
+    <div class="toggle-wrap">
+      <button class="toggle-btn active-bath" id="btnBath"   onclick="setMode('bath')">🛁 Bath Night</button>
+      <button class="toggle-btn"             id="btnNoBath" onclick="setMode('nobath')">✨ No Bath</button>
+    </div>
+  </div>
+
+  <div class="dinner-banner" id="dinnerBanner"></div>
+
+  <div class="card" id="schedule">
+    <div class="schedule-header">
+      <div class="schedule-title">Tonight's Plan</div>
+      <span class="badge badge-bath" id="modeBadge">Bath Night</span>
+    </div>
+    <div class="timeline" id="timeline"></div>
+    <div id="wwTip"></div>
+  </div>
+
+</div>
+
+<script>
+  const WW = {
+    12: [75, 90],  13: [75, 90],
+    14: [80, 100], 15: [80, 100],
+    16: [90, 110], 17: [90, 110],
+    18: [90, 120], 19: [90, 120],
+    20: [100, 120], 21: [100, 120],
+    22: [105, 130], 23: [105, 130],
+    24: [120, 150], 25: [120, 150], 26: [120, 150],
+  };
+
+  const DINNER_OPEN  = 17 * 60 + 45; // 5:45pm earliest
+  const DINNER_CLOSE = 18 * 60 + 45; // 6:45pm latest
+  const DINNER_DUR   = 20;
+  const BATH_DUR     = 15;
+
+  let mode = 'bath';
+  let ageWeeks = 13;
+
+  function getWW(w) { return WW[Math.min(Math.max(w, 12), 26)]; }
+
+  function setMode(m) {
+    mode = m;
+    document.getElementById('btnBath').className   = 'toggle-btn' + (m === 'bath'   ? ' active-bath'   : '');
+    document.getElementById('btnNoBath').className = 'toggle-btn' + (m === 'nobath' ? ' active-nobath' : '');
+    rebuild();
+  }
+
+  function onSlider() {
+    ageWeeks = parseInt(document.getElementById('ageSlider').value);
+    const [mn, mx] = getWW(ageWeeks);
+    document.getElementById('ageLabel').textContent = ageWeeks + ' weeks';
+    document.getElementById('wwBadge').textContent  = `Wake window: ${mn}–${mx} min`;
+    rebuild();
+  }
+
+  function toMins(s) { const [h, m] = s.split(':').map(Number); return h * 60 + m; }
+
+  function fmt(t) {
+    const n = ((t % 1440) + 1440) % 1440;
+    const h = Math.floor(n / 60), m = n % 60;
+    return `${h % 12 || 12}:${String(m).padStart(2,'0')}${h >= 12 ? 'pm' : 'am'}`;
+  }
+
+  function round5(m) { return Math.round(m / 5) * 5; }
+
+  function calcDinnerStart(napEnd, isBath) {
+    // Work out how many minutes of post-dinner activity happen before the second feed
+    // No-bath: leave table → 10 min to room → 5 min settle → feed
+    // Bath:    leave table → 5 min → 15 min bath → 5 min settle → feed
+    const postDinner = isBath ? (5 + BATH_DUR + 5) : (10 + 5);
+
+    // Ideal: second feed starts at napEnd + midpoint of wake window
+    const [wwMin, wwMax] = getWW(ageWeeks);
+    const targetWW = Math.round((wwMin + wwMax) / 2);
+    const idealFeedStart  = napEnd + targetWW;
+    const idealDinnerStart = idealFeedStart - postDinner - DINNER_DUR;
+
+    // Clamp to the 5:45–6:45 window
+    return round5(Math.min(Math.max(idealDinnerStart, DINNER_OPEN), DINNER_CLOSE));
+  }
+
+  function rebuild() {
+    const val = document.getElementById('napEnd').value;
+    if (!val) return;
+
+    const napEnd = round5(toMins(val));
+    const isBath = mode === 'bath';
+    const [wwMin, wwMax] = getWW(ageWeeks);
+    const events = [];
+
+    // 1. First feed at nap wake
+    events.push({ t: napEnd, label: 'Nap ends — first feed', note: 'Feed right away while calm', type: 'key' });
+
+    // 2. Dinner — calculated to hit wake window target, clamped 5:45–6:45
+    const dinnerStart = calcDinnerStart(napEnd, isBath);
+    const dinnerEnd   = dinnerStart + DINNER_DUR;
+    events.push({ t: dinnerStart, label: `Dinner (${fmt(dinnerStart)})`, note: 'She joins — keep it calm', type: 'dinner' });
+    events.push({ t: dinnerEnd,   label: 'Dinner done', note: null, type: 'normal' });
+
+    // 3. Bath or straight to dark room
+    let secondFeedStart;
+    if (isBath) {
+      const bathStart = dinnerEnd + 5;
+      const bathEnd   = bathStart + BATH_DUR;
+      secondFeedStart = bathEnd + 5;
+      events.push({ t: bathStart, label: '🛁 Bath begins', note: 'Warm, dim, quiet — part of wind-down', type: 'normal' });
+      events.push({ t: bathEnd,   label: 'Into dark quiet room', note: 'Sleep sack, swaddle', type: 'normal' });
+    } else {
+      const darkRoom  = dinnerEnd + 10;
+      secondFeedStart = darkRoom + 5;
+      events.push({ t: darkRoom, label: 'Into dark quiet room', note: 'Swaddle, white noise on', type: 'normal' });
+    }
+
+    // 4. Second feed
+    const secondFeedEnd = secondFeedStart + 20;
+    events.push({ t: secondFeedStart, label: 'Second feed begins', note: 'Dark, boring — no talking', type: 'key' });
+
+    // 5. Hold + transfer
+    events.push({ t: secondFeedEnd, label: 'Hold — limp arm test', note: 'Heavy + slack mouth + slow breathing, then 2 more min', type: 'normal' });
+    const transfer = secondFeedEnd + 25;
+    const inCrib   = transfer + 10;
+    events.push({ t: transfer, label: 'Transfer attempt', note: 'Bottom → back → head. Hands on chest 30s', type: 'moon' });
+    events.push({ t: inCrib,   label: '🌙 In pack and play', note: null, type: 'moon' });
+
+    // Render
+    document.getElementById('timeline').innerHTML = events.map(e => `
+      <div class="tl-item ${e.type}">
+        <div class="tl-time">${fmt(e.t)}</div>
+        <div class="tl-dot"></div>
+        <div class="tl-content">
+          <div class="tl-label">${e.label}</div>
+          ${e.note ? `<div class="tl-note">${e.note}</div>` : ''}
+        </div>
+      </div>
+    `).join('');
+
+    // Badge
+    const badge = document.getElementById('modeBadge');
+    badge.textContent = isBath ? '🛁 Bath Night' : '✨ No Bath';
+    badge.className   = 'badge ' + (isBath ? 'badge-bath' : 'badge-nobath');
+
+    // Dinner banner — show if dinner is being pushed to a boundary
+    const banner = document.getElementById('dinnerBanner');
+    const actualWW = secondFeedStart - napEnd;
+    if (dinnerStart <= DINNER_OPEN + 1) {
+      banner.innerHTML = `⏰ <strong>Eat as early as possible (5:45)</strong> — nap ended late enough that the wake window is already tight.`;
+      banner.classList.add('visible');
+    } else if (dinnerStart >= DINNER_CLOSE - 1) {
+      banner.innerHTML = `⏰ <strong>Eat as late as possible (6:45)</strong> — nap ended early; this helps stretch the wake window.`;
+      banner.classList.add('visible');
+    } else {
+      banner.innerHTML = `🍽️ <strong>Aim to sit down around ${fmt(dinnerStart)}</strong> to hit the ideal wake window.`;
+      banner.classList.add('visible');
+    }
+
+    // Wake window tip
+    const tipEl = document.getElementById('wwTip');
+    const isOk    = actualWW >= wwMin && actualWW <= wwMax;
+    const isShort = actualWW < wwMin;
+    tipEl.className = 'ww-tip ' + (isOk ? 'ok' : isShort ? 'short' : 'long');
+    tipEl.innerHTML = `<strong>Wake window: ${actualWW} min</strong> · Target for ${ageWeeks} wks: ${wwMin}–${wwMax} min · ${
+      isOk    ? '✓ Right in the zone.' :
+      isShort ? '⚠️ A little short — she may not be tired enough yet.' :
+                '⚠️ Getting long — watch for overtired signs.'
+    }`;
+
+    document.getElementById('schedule').classList.add('visible');
+  }
+
+  document.getElementById('napEnd').addEventListener('input', rebuild);
+  rebuild();
+</script>
+</body>
+</html>
