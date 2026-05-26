@@ -235,6 +235,36 @@
 </div>
 
 <script>
+  // ── Tuneable constants ────────────────────────────────────────────────────
+
+  // Age range (weeks)
+  const AGE_MIN_WEEKS        = 12;
+  const AGE_MAX_WEEKS        = 26;
+  const DEFAULT_AGE          = 13;
+  const DEFAULT_MODE         = 'bath'; // 'bath' | 'nobath'
+
+  // Time helpers
+  const MINS_PER_DAY         = 1440;
+  const ROUND_INTERVAL       = 5;   // round all times to nearest N minutes
+  const HOUR_FORMAT          = 12;  // 12-hour clock
+
+  // Dinner window
+  const DINNER_OPEN          = 17 * 60 + 45; // 5:45pm earliest
+  const DINNER_CLOSE         = 18 * 60 + 45; // 6:45pm latest
+  const DINNER_DUR           = 20;            // minutes to eat
+  const DINNER_BOUNDARY_TOL  = 1;             // tolerance for "at the boundary" banner
+
+  // Routine durations (minutes)
+  const BATH_DUR             = 15;
+  const FEED_DUR             = 20;  // second feed
+  const AFTER_DINNER_TO_BATH = 5;   // gap: dinner done → bath (bath night)
+  const AFTER_BATH_TO_FEED   = 5;   // gap: bath done → second feed
+  const AFTER_DINNER_TO_ROOM = 10;  // gap: dinner done → dark room (no-bath night)
+  const AFTER_ROOM_TO_FEED   = 5;   // gap: dark room → second feed
+  const HOLD_DUR             = 25;  // hold after feed before transfer
+  const TRANSFER_TO_CRIB_DUR = 10;  // transfer → in crib
+
+  // ── Wake window table ────────────────────────────────────────────────────
   const WW = {
     12: [75, 90],  13: [75, 90],
     14: [80, 100], 15: [80, 100],
@@ -245,15 +275,10 @@
     24: [120, 150], 25: [120, 150], 26: [120, 150],
   };
 
-  const DINNER_OPEN  = 17 * 60 + 45; // 5:45pm earliest
-  const DINNER_CLOSE = 18 * 60 + 45; // 6:45pm latest
-  const DINNER_DUR   = 20;
-  const BATH_DUR     = 15;
+  let mode = DEFAULT_MODE;
+  let ageWeeks = DEFAULT_AGE;
 
-  let mode = 'bath';
-  let ageWeeks = 13;
-
-  function getWW(w) { return WW[Math.min(Math.max(w, 12), 26)]; }
+  function getWW(w) { return WW[Math.min(Math.max(w, AGE_MIN_WEEKS), AGE_MAX_WEEKS)]; }
 
   function setMode(m) {
     mode = m;
@@ -273,73 +298,64 @@
   function toMins(s) { const [h, m] = s.split(':').map(Number); return h * 60 + m; }
 
   function fmt(t) {
-    const n = ((t % 1440) + 1440) % 1440;
+    const n = ((t % MINS_PER_DAY) + MINS_PER_DAY) % MINS_PER_DAY;
     const h = Math.floor(n / 60), m = n % 60;
-    return `${h % 12 || 12}:${String(m).padStart(2,'0')}${h >= 12 ? 'pm' : 'am'}`;
+    return `${h % HOUR_FORMAT || HOUR_FORMAT}:${String(m).padStart(2,'0')}${h >= HOUR_FORMAT ? 'pm' : 'am'}`;
   }
 
-  function round5(m) { return Math.round(m / 5) * 5; }
+  function roundN(m) { return Math.round(m / ROUND_INTERVAL) * ROUND_INTERVAL; }
 
   function calcDinnerStart(napEnd, isBath) {
-    // Work out how many minutes of post-dinner activity happen before the second feed
-    // No-bath: leave table → 10 min to room → 5 min settle → feed
-    // Bath:    leave table → 5 min → 15 min bath → 5 min settle → feed
-    const postDinner = isBath ? (5 + BATH_DUR + 5) : (10 + 5);
+    const postDinner = isBath
+      ? (AFTER_DINNER_TO_BATH + BATH_DUR + AFTER_BATH_TO_FEED)
+      : (AFTER_DINNER_TO_ROOM + AFTER_ROOM_TO_FEED);
 
-    // Ideal: second feed starts at napEnd + midpoint of wake window
     const [wwMin, wwMax] = getWW(ageWeeks);
     const targetWW = Math.round((wwMin + wwMax) / 2);
-    const idealFeedStart  = napEnd + targetWW;
+    const idealFeedStart   = napEnd + targetWW;
     const idealDinnerStart = idealFeedStart - postDinner - DINNER_DUR;
 
-    // Clamp to the 5:45–6:45 window
-    return round5(Math.min(Math.max(idealDinnerStart, DINNER_OPEN), DINNER_CLOSE));
+    return roundN(Math.min(Math.max(idealDinnerStart, DINNER_OPEN), DINNER_CLOSE));
   }
 
   function rebuild() {
     const val = document.getElementById('napEnd').value;
     if (!val) return;
 
-    const napEnd = round5(toMins(val));
+    const napEnd = roundN(toMins(val));
     const isBath = mode === 'bath';
     const [wwMin, wwMax] = getWW(ageWeeks);
     const events = [];
 
-    // 1. First feed at nap wake
     events.push({ t: napEnd, label: 'Nap ends — first feed', note: 'Feed right away while calm', type: 'key' });
 
-    // 2. Dinner — calculated to hit wake window target, clamped 5:45–6:45
     const dinnerStart = calcDinnerStart(napEnd, isBath);
     const dinnerEnd   = dinnerStart + DINNER_DUR;
     events.push({ t: dinnerStart, label: `Dinner (${fmt(dinnerStart)})`, note: 'She joins — keep it calm', type: 'dinner' });
     events.push({ t: dinnerEnd,   label: 'Dinner done', note: null, type: 'normal' });
 
-    // 3. Bath or straight to dark room
     let secondFeedStart;
     if (isBath) {
-      const bathStart = dinnerEnd + 5;
+      const bathStart = dinnerEnd + AFTER_DINNER_TO_BATH;
       const bathEnd   = bathStart + BATH_DUR;
-      secondFeedStart = bathEnd + 5;
+      secondFeedStart = bathEnd + AFTER_BATH_TO_FEED;
       events.push({ t: bathStart, label: '🛁 Bath begins', note: 'Warm, dim, quiet — part of wind-down', type: 'normal' });
       events.push({ t: bathEnd,   label: 'Into dark quiet room', note: 'Sleep sack, swaddle', type: 'normal' });
     } else {
-      const darkRoom  = dinnerEnd + 10;
-      secondFeedStart = darkRoom + 5;
+      const darkRoom  = dinnerEnd + AFTER_DINNER_TO_ROOM;
+      secondFeedStart = darkRoom + AFTER_ROOM_TO_FEED;
       events.push({ t: darkRoom, label: 'Into dark quiet room', note: 'Swaddle, white noise on', type: 'normal' });
     }
 
-    // 4. Second feed
-    const secondFeedEnd = secondFeedStart + 20;
+    const secondFeedEnd = secondFeedStart + FEED_DUR;
     events.push({ t: secondFeedStart, label: 'Second feed begins', note: 'Dark, boring — no talking', type: 'key' });
 
-    // 5. Hold + transfer
     events.push({ t: secondFeedEnd, label: 'Hold — limp arm test', note: 'Heavy + slack mouth + slow breathing, then 2 more min', type: 'normal' });
-    const transfer = secondFeedEnd + 25;
-    const inCrib   = transfer + 10;
+    const transfer = secondFeedEnd + HOLD_DUR;
+    const inCrib   = transfer + TRANSFER_TO_CRIB_DUR;
     events.push({ t: transfer, label: 'Transfer attempt', note: 'Bottom → back → head. Hands on chest 30s', type: 'moon' });
     events.push({ t: inCrib,   label: '🌙 In pack and play', note: null, type: 'moon' });
 
-    // Render
     document.getElementById('timeline').innerHTML = events.map(e => `
       <div class="tl-item ${e.type}">
         <div class="tl-time">${fmt(e.t)}</div>
@@ -351,26 +367,23 @@
       </div>
     `).join('');
 
-    // Badge
     const badge = document.getElementById('modeBadge');
     badge.textContent = isBath ? '🛁 Bath Night' : '✨ No Bath';
     badge.className   = 'badge ' + (isBath ? 'badge-bath' : 'badge-nobath');
 
-    // Dinner banner — show if dinner is being pushed to a boundary
     const banner = document.getElementById('dinnerBanner');
     const actualWW = secondFeedStart - napEnd;
-    if (dinnerStart <= DINNER_OPEN + 1) {
-      banner.innerHTML = `⏰ <strong>Eat as early as possible (5:45)</strong> — nap ended late enough that the wake window is already tight.`;
+    if (dinnerStart <= DINNER_OPEN + DINNER_BOUNDARY_TOL) {
+      banner.innerHTML = `⏰ <strong>Eat as early as possible (${fmt(DINNER_OPEN)})</strong> — nap ended late enough that the wake window is already tight.`;
       banner.classList.add('visible');
-    } else if (dinnerStart >= DINNER_CLOSE - 1) {
-      banner.innerHTML = `⏰ <strong>Eat as late as possible (6:45)</strong> — nap ended early; this helps stretch the wake window.`;
+    } else if (dinnerStart >= DINNER_CLOSE - DINNER_BOUNDARY_TOL) {
+      banner.innerHTML = `⏰ <strong>Eat as late as possible (${fmt(DINNER_CLOSE)})</strong> — nap ended early; this helps stretch the wake window.`;
       banner.classList.add('visible');
     } else {
       banner.innerHTML = `🍽️ <strong>Aim to sit down around ${fmt(dinnerStart)}</strong> to hit the ideal wake window.`;
       banner.classList.add('visible');
     }
 
-    // Wake window tip
     const tipEl = document.getElementById('wwTip');
     const isOk    = actualWW >= wwMin && actualWW <= wwMax;
     const isShort = actualWW < wwMin;
@@ -384,8 +397,20 @@
     document.getElementById('schedule').classList.add('visible');
   }
 
+  // ── Init — drive all elements from constants ──────────────────────────────
+  const slider = document.getElementById('ageSlider');
+  slider.min   = AGE_MIN_WEEKS;
+  slider.max   = AGE_MAX_WEEKS;
+  slider.value = DEFAULT_AGE;
+  document.querySelectorAll('.range-labels span')[0].textContent = `${AGE_MIN_WEEKS} wks`;
+  document.querySelectorAll('.range-labels span')[1].textContent = `${AGE_MAX_WEEKS} wks`;
+  document.querySelector('header p').textContent =
+    `Dinner anytime ${fmt(DINNER_OPEN)}–${fmt(DINNER_CLOSE)} · ${DINNER_DUR} min to eat`;
+  document.getElementById('btnBath').className   = 'toggle-btn' + (DEFAULT_MODE === 'bath'   ? ' active-bath'   : '');
+  document.getElementById('btnNoBath').className = 'toggle-btn' + (DEFAULT_MODE === 'nobath' ? ' active-nobath' : '');
+
   document.getElementById('napEnd').addEventListener('input', rebuild);
-  rebuild();
+  onSlider(); // sets ageLabel, wwBadge, and calls rebuild()
 </script>
 </body>
 </html>
