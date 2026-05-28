@@ -98,6 +98,7 @@
   .range-labels { display: flex; justify-content: space-between; margin-top: 5px; }
   .range-labels span { font-size: 0.65rem; color: var(--light); }
 
+  /* 3-way toggle (bath + nap quality) */
   .toggle-wrap {
     display: flex;
     background: var(--input);
@@ -107,13 +108,56 @@
   }
   .toggle-btn {
     flex: 1; border: none; border-radius: 9px;
-    padding: 10px 14px;
-    font-family: 'Lato', sans-serif; font-size: 0.88rem; font-weight: 700;
+    padding: 10px 8px;
+    font-family: 'Lato', sans-serif; font-size: 0.82rem; font-weight: 700;
     cursor: pointer; transition: all 0.2s;
     color: var(--mid); background: transparent;
+    white-space: nowrap;
   }
+
+  /* Bath toggle colors */
   .toggle-btn.active-bath   { background: var(--bath);   color: white; box-shadow: 0 2px 8px rgba(26,96,184,0.3); }
   .toggle-btn.active-nobath { background: var(--nobath); color: white; box-shadow: 0 2px 8px rgba(80,80,160,0.3); }
+
+  /* Nap quality colors */
+  .toggle-btn.active-short  { background: #c04040; color: white; box-shadow: 0 2px 8px rgba(192,64,64,0.3); }
+  .toggle-btn.active-normal { background: var(--accent); color: white; box-shadow: 0 2px 8px rgba(74,74,170,0.3); }
+  .toggle-btn.active-long   { background: var(--ok); color: white; box-shadow: 0 2px 8px rgba(26,138,74,0.3); }
+
+  /* Skip first feed row */
+  .skip-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .skip-label {
+    font-size: 0.85rem;
+    color: var(--ink);
+    font-weight: 400;
+  }
+
+  /* iOS-style switch */
+  .switch { position: relative; display: inline-block; width: 44px; height: 26px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider-sw {
+    position: absolute; cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--border);
+    border-radius: 26px;
+    transition: 0.2s;
+  }
+  .slider-sw:before {
+    position: absolute; content: '';
+    height: 20px; width: 20px;
+    left: 3px; bottom: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .switch input:checked + .slider-sw { background: var(--accent); }
+  .switch input:checked + .slider-sw:before { transform: translateX(18px); }
 
   /* Dinner suggestion banner */
   .dinner-banner {
@@ -160,14 +204,12 @@
     background: #c8c8dc; border: 2px solid var(--border);
     margin-top: 4px; flex-shrink: 0;
   }
-  .tl-item.key .tl-dot  { background: var(--accent); border-color: var(--accent); width: 12px; height: 12px; box-shadow: 0 0 0 3px rgba(74,74,170,0.12); margin-top: 3px; }
+  .tl-item.key .tl-dot   { background: var(--accent); border-color: var(--accent); width: 12px; height: 12px; box-shadow: 0 0 0 3px rgba(74,74,170,0.12); margin-top: 3px; }
   .tl-item.key .tl-time  { color: var(--accent); }
   .tl-item.key .tl-label { font-weight: 700; color: var(--accent); }
   .tl-item.moon .tl-dot  { background: var(--ink); border-color: var(--ink); width: 12px; height: 12px; margin-top: 3px; }
   .tl-item.moon .tl-time  { color: var(--ink); }
   .tl-item.moon .tl-label { font-weight: 700; }
-
-  /* Dinner row highlight */
   .tl-item.dinner .tl-dot  { background: var(--gold); border-color: var(--gold); width: 12px; height: 12px; margin-top: 3px; }
   .tl-item.dinner .tl-time  { color: var(--gold); font-size: 0.9rem; }
   .tl-item.dinner .tl-label { font-weight: 700; color: var(--gold); }
@@ -198,11 +240,23 @@
     <p>Dinner anytime 5:45–6:45 · 20 min to eat</p>
   </header>
 
+  <!-- Nap end time -->
   <div class="card">
     <div class="card-label">Last Nap Ended At</div>
     <input type="time" id="napEnd" value="17:00" />
   </div>
 
+  <!-- Nap quality -->
+  <div class="card">
+    <div class="card-label">Last Nap Quality</div>
+    <div class="toggle-wrap">
+      <button class="toggle-btn" id="btnShort"  onclick="setNapQuality('short')">😴 Short (&lt;30m)</button>
+      <button class="toggle-btn active-normal" id="btnNormal" onclick="setNapQuality('normal')">✓ Normal</button>
+      <button class="toggle-btn" id="btnLong"   onclick="setNapQuality('long')">😊 Long (45m+)</button>
+    </div>
+  </div>
+
+  <!-- Age -->
   <div class="card">
     <div class="card-label">Baby's Age</div>
     <div class="age-row">
@@ -213,11 +267,19 @@
     <div class="range-labels"><span>12 wks</span><span>26 wks</span></div>
   </div>
 
+  <!-- Tonight's routine -->
   <div class="card">
     <div class="card-label">Tonight's Routine</div>
-    <div class="toggle-wrap">
+    <div class="toggle-wrap" style="margin-bottom:14px;">
       <button class="toggle-btn active-bath" id="btnBath"   onclick="setMode('bath')">🛁 Bath Night</button>
       <button class="toggle-btn"             id="btnNoBath" onclick="setMode('nobath')">✨ No Bath</button>
+    </div>
+    <div class="skip-row">
+      <span class="skip-label">Skip first feed</span>
+      <label class="switch">
+        <input type="checkbox" id="skipFirstFeed" onchange="rebuild()" />
+        <span class="slider-sw"></span>
+      </label>
     </div>
   </div>
 
@@ -235,36 +297,6 @@
 </div>
 
 <script>
-  // ── Tuneable constants ────────────────────────────────────────────────────
-
-  // Age range (weeks)
-  const AGE_MIN_WEEKS        = 12;
-  const AGE_MAX_WEEKS        = 26;
-  const DEFAULT_AGE          = 13;
-  const DEFAULT_MODE         = 'bath'; // 'bath' | 'nobath'
-
-  // Time helpers
-  const MINS_PER_DAY         = 1440;
-  const ROUND_INTERVAL       = 5;   // round all times to nearest N minutes
-  const HOUR_FORMAT          = 12;  // 12-hour clock
-
-  // Dinner window
-  const DINNER_OPEN          = 17 * 60 + 45; // 5:45pm earliest
-  const DINNER_CLOSE         = 18 * 60 + 45; // 6:45pm latest
-  const DINNER_DUR           = 20;            // minutes to eat
-  const DINNER_BOUNDARY_TOL  = 1;             // tolerance for "at the boundary" banner
-
-  // Routine durations (minutes)
-  const BATH_DUR             = 15;
-  const FEED_DUR             = 20;  // second feed
-  const AFTER_DINNER_TO_BATH = 5;   // gap: dinner done → bath (bath night)
-  const AFTER_BATH_TO_FEED   = 5;   // gap: bath done → second feed
-  const AFTER_DINNER_TO_ROOM = 10;  // gap: dinner done → dark room (no-bath night)
-  const AFTER_ROOM_TO_FEED   = 5;   // gap: dark room → second feed
-  const HOLD_DUR             = 25;  // hold after feed before transfer
-  const TRANSFER_TO_CRIB_DUR = 10;  // transfer → in crib
-
-  // ── Wake window table ────────────────────────────────────────────────────
   const WW = {
     12: [75, 90],  13: [75, 90],
     14: [80, 100], 15: [80, 100],
@@ -275,15 +307,37 @@
     24: [120, 150], 25: [120, 150], 26: [120, 150],
   };
 
-  let mode = DEFAULT_MODE;
-  let ageWeeks = DEFAULT_AGE;
+  const DINNER_OPEN  = 17 * 60 + 45;
+  const DINNER_CLOSE = 18 * 60 + 45;
+  const DINNER_DUR   = 20;
+  const BATH_DUR     = 15;
 
-  function getWW(w) { return WW[Math.min(Math.max(w, AGE_MIN_WEEKS), AGE_MAX_WEEKS)]; }
+  let mode       = 'bath';
+  let ageWeeks   = 13;
+  let napQuality = 'normal';
+
+  function getWW(w) { return WW[Math.min(Math.max(w, 12), 26)]; }
+
+  // Returns the single target wake window minute based on nap quality
+  function getTargetWW() {
+    const [wwMin, wwMax] = getWW(ageWeeks);
+    if (napQuality === 'short')  return wwMin;
+    if (napQuality === 'long')   return wwMax;
+    return round5((wwMin + wwMax) / 2); // normal = midpoint
+  }
 
   function setMode(m) {
     mode = m;
     document.getElementById('btnBath').className   = 'toggle-btn' + (m === 'bath'   ? ' active-bath'   : '');
     document.getElementById('btnNoBath').className = 'toggle-btn' + (m === 'nobath' ? ' active-nobath' : '');
+    rebuild();
+  }
+
+  function setNapQuality(q) {
+    napQuality = q;
+    document.getElementById('btnShort').className  = 'toggle-btn' + (q === 'short'  ? ' active-short'  : '');
+    document.getElementById('btnNormal').className = 'toggle-btn' + (q === 'normal' ? ' active-normal' : '');
+    document.getElementById('btnLong').className   = 'toggle-btn' + (q === 'long'   ? ' active-long'   : '');
     rebuild();
   }
 
@@ -298,64 +352,69 @@
   function toMins(s) { const [h, m] = s.split(':').map(Number); return h * 60 + m; }
 
   function fmt(t) {
-    const n = ((t % MINS_PER_DAY) + MINS_PER_DAY) % MINS_PER_DAY;
+    const n = ((t % 1440) + 1440) % 1440;
     const h = Math.floor(n / 60), m = n % 60;
-    return `${h % HOUR_FORMAT || HOUR_FORMAT}:${String(m).padStart(2,'0')}${h >= HOUR_FORMAT ? 'pm' : 'am'}`;
+    return `${h % 12 || 12}:${String(m).padStart(2, '0')}${h >= 12 ? 'pm' : 'am'}`;
   }
 
-  function roundN(m) { return Math.round(m / ROUND_INTERVAL) * ROUND_INTERVAL; }
+  function round5(m) { return Math.round(m / 5) * 5; }
 
   function calcDinnerStart(napEnd, isBath) {
-    const postDinner = isBath
-      ? (AFTER_DINNER_TO_BATH + BATH_DUR + AFTER_BATH_TO_FEED)
-      : (AFTER_DINNER_TO_ROOM + AFTER_ROOM_TO_FEED);
-
-    const [wwMin, wwMax] = getWW(ageWeeks);
-    const targetWW = Math.round((wwMin + wwMax) / 2);
-    const idealFeedStart   = napEnd + targetWW;
-    const idealDinnerStart = idealFeedStart - postDinner - DINNER_DUR;
-
-    return roundN(Math.min(Math.max(idealDinnerStart, DINNER_OPEN), DINNER_CLOSE));
+    const postDinner   = isBath ? (5 + BATH_DUR + 5) : (10 + 5);
+    const targetWW     = getTargetWW();
+    const idealFeed    = napEnd + targetWW;
+    const idealDinner  = idealFeed - postDinner - DINNER_DUR;
+    return round5(Math.min(Math.max(idealDinner, DINNER_OPEN), DINNER_CLOSE));
   }
 
   function rebuild() {
     const val = document.getElementById('napEnd').value;
     if (!val) return;
 
-    const napEnd = roundN(toMins(val));
-    const isBath = mode === 'bath';
+    const napEnd      = round5(toMins(val));
+    const isBath      = mode === 'bath';
+    const skipFirst   = document.getElementById('skipFirstFeed').checked;
     const [wwMin, wwMax] = getWW(ageWeeks);
-    const events = [];
+    const targetWW    = getTargetWW();
+    const events      = [];
 
-    events.push({ t: napEnd, label: 'Nap ends — first feed', note: 'Feed right away while calm', type: 'key' });
+    // 1. First feed (optional)
+    if (!skipFirst) {
+      events.push({ t: napEnd, label: 'Nap ends — first feed', note: 'Feed right away while calm', type: 'key' });
+    }
 
+    // 2. Dinner
     const dinnerStart = calcDinnerStart(napEnd, isBath);
     const dinnerEnd   = dinnerStart + DINNER_DUR;
     events.push({ t: dinnerStart, label: `Dinner (${fmt(dinnerStart)})`, note: 'She joins — keep it calm', type: 'dinner' });
     events.push({ t: dinnerEnd,   label: 'Dinner done', note: null, type: 'normal' });
 
+    // 3. Bath or dark room
     let secondFeedStart;
     if (isBath) {
-      const bathStart = dinnerEnd + AFTER_DINNER_TO_BATH;
+      const bathStart = dinnerEnd + 5;
       const bathEnd   = bathStart + BATH_DUR;
-      secondFeedStart = bathEnd + AFTER_BATH_TO_FEED;
+      secondFeedStart = bathEnd + 5;
       events.push({ t: bathStart, label: '🛁 Bath begins', note: 'Warm, dim, quiet — part of wind-down', type: 'normal' });
       events.push({ t: bathEnd,   label: 'Into dark quiet room', note: 'Sleep sack, swaddle', type: 'normal' });
     } else {
-      const darkRoom  = dinnerEnd + AFTER_DINNER_TO_ROOM;
-      secondFeedStart = darkRoom + AFTER_ROOM_TO_FEED;
+      const darkRoom  = dinnerEnd + 10;
+      secondFeedStart = darkRoom + 5;
       events.push({ t: darkRoom, label: 'Into dark quiet room', note: 'Swaddle, white noise on', type: 'normal' });
     }
 
-    const secondFeedEnd = secondFeedStart + FEED_DUR;
+    // 4. Second feed
+    const secondFeedEnd = secondFeedStart + 20;
     events.push({ t: secondFeedStart, label: 'Second feed begins', note: 'Dark, boring — no talking', type: 'key' });
 
+    // 5. Hold + transfer
     events.push({ t: secondFeedEnd, label: 'Hold — limp arm test', note: 'Heavy + slack mouth + slow breathing, then 2 more min', type: 'normal' });
-    const transfer = secondFeedEnd + HOLD_DUR;
-    const inCrib   = transfer + TRANSFER_TO_CRIB_DUR;
+    const transfer = secondFeedEnd + 25;
+    const inCrib   = transfer + 10;
     events.push({ t: transfer, label: 'Transfer attempt', note: 'Bottom → back → head. Hands on chest 30s', type: 'moon' });
     events.push({ t: inCrib,   label: '🌙 In pack and play', note: null, type: 'moon' });
 
+    // Render timeline
     document.getElementById('timeline').innerHTML = events.map(e => `
       <div class="tl-item ${e.type}">
         <div class="tl-time">${fmt(e.t)}</div>
@@ -367,29 +426,32 @@
       </div>
     `).join('');
 
+    // Badge
     const badge = document.getElementById('modeBadge');
     badge.textContent = isBath ? '🛁 Bath Night' : '✨ No Bath';
     badge.className   = 'badge ' + (isBath ? 'badge-bath' : 'badge-nobath');
 
-    const banner = document.getElementById('dinnerBanner');
-    const actualWW = secondFeedStart - napEnd;
-    if (dinnerStart <= DINNER_OPEN + DINNER_BOUNDARY_TOL) {
-      banner.innerHTML = `⏰ <strong>Eat as early as possible (${fmt(DINNER_OPEN)})</strong> — nap ended late enough that the wake window is already tight.`;
-      banner.classList.add('visible');
-    } else if (dinnerStart >= DINNER_CLOSE - DINNER_BOUNDARY_TOL) {
-      banner.innerHTML = `⏰ <strong>Eat as late as possible (${fmt(DINNER_CLOSE)})</strong> — nap ended early; this helps stretch the wake window.`;
-      banner.classList.add('visible');
+    // Dinner banner
+    const banner    = document.getElementById('dinnerBanner');
+    const actualWW  = secondFeedStart - napEnd;
+    if (dinnerStart <= DINNER_OPEN + 1) {
+      banner.innerHTML = `⏰ <strong>Eat as early as possible (5:45)</strong> — wake window is already tight.`;
+    } else if (dinnerStart >= DINNER_CLOSE - 1) {
+      banner.innerHTML = `⏰ <strong>Eat as late as possible (6:45)</strong> — helps stretch the wake window.`;
     } else {
       banner.innerHTML = `🍽️ <strong>Aim to sit down around ${fmt(dinnerStart)}</strong> to hit the ideal wake window.`;
-      banner.classList.add('visible');
     }
+    banner.classList.add('visible');
 
-    const tipEl = document.getElementById('wwTip');
-    const isOk    = actualWW >= wwMin && actualWW <= wwMax;
-    const isShort = actualWW < wwMin;
+    // WW tip — compare against targetWW (nap-quality-adjusted), with ±5 min tolerance
+    const tipEl   = document.getElementById('wwTip');
+    const tolerance = 5;
+    const isOk    = Math.abs(actualWW - targetWW) <= tolerance;
+    const isShort = actualWW < targetWW - tolerance;
+    const qualityLabel = napQuality === 'short' ? 'short nap' : napQuality === 'long' ? 'long nap' : 'normal nap';
     tipEl.className = 'ww-tip ' + (isOk ? 'ok' : isShort ? 'short' : 'long');
-    tipEl.innerHTML = `<strong>Wake window: ${actualWW} min</strong> · Target for ${ageWeeks} wks: ${wwMin}–${wwMax} min · ${
-      isOk    ? '✓ Right in the zone.' :
+    tipEl.innerHTML = `<strong>Wake window: ${actualWW} min</strong> · Target: ${targetWW} min (${qualityLabel}, ${ageWeeks} wks) · ${
+      isOk    ? '✓ Right on target.' :
       isShort ? '⚠️ A little short — she may not be tired enough yet.' :
                 '⚠️ Getting long — watch for overtired signs.'
     }`;
@@ -397,20 +459,44 @@
     document.getElementById('schedule').classList.add('visible');
   }
 
-  // ── Init — drive all elements from constants ──────────────────────────────
-  const slider = document.getElementById('ageSlider');
-  slider.min   = AGE_MIN_WEEKS;
-  slider.max   = AGE_MAX_WEEKS;
-  slider.value = DEFAULT_AGE;
-  document.querySelectorAll('.range-labels span')[0].textContent = `${AGE_MIN_WEEKS} wks`;
-  document.querySelectorAll('.range-labels span')[1].textContent = `${AGE_MAX_WEEKS} wks`;
-  document.querySelector('header p').textContent =
-    `Dinner anytime ${fmt(DINNER_OPEN)}–${fmt(DINNER_CLOSE)} · ${DINNER_DUR} min to eat`;
-  document.getElementById('btnBath').className   = 'toggle-btn' + (DEFAULT_MODE === 'bath'   ? ' active-bath'   : '');
-  document.getElementById('btnNoBath').className = 'toggle-btn' + (DEFAULT_MODE === 'nobath' ? ' active-nobath' : '');
+  // Persist state to localStorage
+  function saveState() {
+    localStorage.setItem('bss', JSON.stringify({
+      napEnd:     document.getElementById('napEnd').value,
+      ageWeeks,
+      mode,
+      napQuality,
+      skipFirst:  document.getElementById('skipFirstFeed').checked,
+    }));
+  }
 
-  document.getElementById('napEnd').addEventListener('input', rebuild);
-  onSlider(); // sets ageLabel, wwBadge, and calls rebuild()
+  // Restore state from localStorage
+  function loadState() {
+    try {
+      const s = JSON.parse(localStorage.getItem('bss'));
+      if (!s) return;
+      if (s.napEnd)     document.getElementById('napEnd').value = s.napEnd;
+      if (s.ageWeeks)   { ageWeeks = s.ageWeeks; document.getElementById('ageSlider').value = ageWeeks; const [mn,mx] = getWW(ageWeeks); document.getElementById('ageLabel').textContent = ageWeeks + ' weeks'; document.getElementById('wwBadge').textContent = `Wake window: ${mn}–${mx} min`; }
+      if (s.mode)       setMode(s.mode);
+      if (s.napQuality) setNapQuality(s.napQuality);
+      if (s.skipFirst)  document.getElementById('skipFirstFeed').checked = s.skipFirst;
+    } catch(e) {}
+  }
+
+  // Save on any change
+  document.getElementById('napEnd').addEventListener('input', () => { saveState(); rebuild(); });
+  document.getElementById('skipFirstFeed').addEventListener('change', () => { saveState(); rebuild(); });
+
+  // Wrap setMode/setNapQuality/onSlider to also save
+  const _setMode = setMode;
+  setMode = (m) => { _setMode(m); saveState(); };
+  const _setNapQuality = setNapQuality;
+  setNapQuality = (q) => { _setNapQuality(q); saveState(); };
+  const _onSlider = onSlider;
+  onSlider = () => { _onSlider(); saveState(); };
+
+  loadState();
+  rebuild();
 </script>
 </body>
 </html>
