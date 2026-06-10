@@ -237,34 +237,18 @@
   <header>
     <span class="icon">🌙</span>
     <h1>Tonight's <em>Bedtime</em> Schedule</h1>
-    <p>Dinner anytime 5:45–6:45 · 20 min to eat</p>
+    <p>Dinner anytime 5:45–7:00 · 20 min to eat</p>
   </header>
-
-  <!-- Nap end time -->
-  <div class="card">
-    <div class="card-label">Last Nap Ended At</div>
-    <input type="time" id="napEnd" value="17:00" />
-  </div>
-
-  <!-- Nap quality -->
-  <div class="card">
-    <div class="card-label">Last Nap Quality</div>
-    <div class="toggle-wrap">
-      <button class="toggle-btn" id="btnShort"  onclick="setNapQuality('short')">😴 Short (&lt;30m)</button>
-      <button class="toggle-btn active-normal" id="btnNormal" onclick="setNapQuality('normal')">✓ Normal</button>
-      <button class="toggle-btn" id="btnLong"   onclick="setNapQuality('long')">😊 Long (45m+)</button>
-    </div>
-  </div>
 
   <!-- Age -->
   <div class="card">
     <div class="card-label">Baby's Age</div>
     <div class="age-row">
-      <div class="age-display" id="ageLabel">13 weeks</div>
-      <div class="ww-badge" id="wwBadge">Wake window: 75–90 min</div>
+      <div class="age-display" id="ageLabel">15 weeks</div>
+      <div class="ww-badge" id="wwBadge">Wake window: 80–100 min</div>
     </div>
-    <input type="range" id="ageSlider" min="12" max="26" value="13" step="1" oninput="onSlider()" />
-    <div class="range-labels"><span>12 wks</span><span>26 wks</span></div>
+    <input type="range" id="ageSlider" min="15" max="26" value="15" step="1" oninput="onSlider()" />
+    <div class="range-labels"><span>15 wks</span><span>26 wks</span></div>
   </div>
 
   <!-- Tonight's routine -->
@@ -283,6 +267,29 @@
     </div>
   </div>
 
+  <!-- Last nap cutoff -->
+  <div class="card">
+    <div class="card-label">Last Nap Must End By</div>
+    <div id="napCutoff" style="font-size:1.6rem;font-weight:700;color:var(--accent);letter-spacing:0.01em;"></div>
+    <div id="napCutoffNote" style="font-size:0.73rem;color:var(--mid);margin-top:4px;"></div>
+  </div>
+
+  <!-- Last Nap Ended At -->
+  <div class="card">
+    <div class="card-label">Last Nap Ended At</div>
+    <input type="time" id="napEnd" value="17:00" />
+  </div>
+
+  <!-- Nap quality -->
+  <div class="card">
+    <div class="card-label">Last Nap Quality</div>
+    <div class="toggle-wrap">
+      <button class="toggle-btn" id="btnShort"  onclick="setNapQuality('short')">😴 Short (&lt;30m)</button>
+      <button class="toggle-btn active-normal" id="btnNormal" onclick="setNapQuality('normal')">✓ Normal</button>
+      <button class="toggle-btn" id="btnLong"   onclick="setNapQuality('long')">😊 Long (45m+)</button>
+    </div>
+  </div>
+
   <div class="dinner-banner" id="dinnerBanner"></div>
 
   <div class="card" id="schedule">
@@ -298,8 +305,7 @@
 
 <script>
   const WW = {
-    12: [75, 90],  13: [75, 90],
-    14: [80, 100], 15: [80, 100],
+    15: [80, 100],
     16: [90, 110], 17: [90, 110],
     18: [90, 120], 19: [90, 120],
     20: [100, 120], 21: [100, 120],
@@ -308,15 +314,15 @@
   };
 
   const DINNER_OPEN  = 17 * 60 + 45;
-  const DINNER_CLOSE = 18 * 60 + 45;
+  const DINNER_CLOSE = 19 * 60 + 0;
   const DINNER_DUR   = 20;
   const BATH_DUR     = 15;
 
   let mode       = 'bath';
-  let ageWeeks   = 13;
+  let ageWeeks   = 15;
   let napQuality = 'normal';
 
-  function getWW(w) { return WW[Math.min(Math.max(w, 12), 26)]; }
+  function getWW(w) { return WW[Math.min(Math.max(w, 15), 26)]; }
 
   // Returns the single target wake window minute based on nap quality
   function getTargetWW() {
@@ -359,11 +365,22 @@
 
   function round5(m) { return Math.round(m / 5) * 5; }
 
+  const BEDTIME_LATEST = 19 * 60 + 30; // 7:30pm
+
+  function updateNapCutoff() {
+    const [, wwMax] = getWW(ageWeeks);
+    const cutoff    = round5(BEDTIME_LATEST - wwMax);
+    document.getElementById('napCutoff').textContent     = fmt(cutoff);
+    document.getElementById('napCutoffNote').textContent = `7:30pm bedtime − ${wwMax} min max wake window`;
+  }
+
   function calcDinnerStart(napEnd, isBath) {
-    const postDinner   = isBath ? (5 + BATH_DUR + 5) : (10 + 5);
-    const targetWW     = getTargetWW();
-    const idealFeed    = napEnd + targetWW;
-    const idealDinner  = idealFeed - postDinner - DINNER_DUR;
+    // Work backwards: crib = napEnd + targetWW, feed = crib - 15, pre-feed = bath or dark room
+    const postDinner = isBath ? (5 + BATH_DUR + 5) : (10 + 5);
+    const targetWW   = getTargetWW();
+    const idealCrib  = napEnd + targetWW;
+    const idealFeed  = idealCrib - 15; // feed duration
+    const idealDinner = idealFeed - postDinner - DINNER_DUR;
     return round5(Math.min(Math.max(idealDinner, DINNER_OPEN), DINNER_CLOSE));
   }
 
@@ -404,15 +421,17 @@
     }
 
     // 4. Second feed
-    const secondFeedEnd = secondFeedStart + 20;
+    const secondFeedEnd = secondFeedStart + 15;
     events.push({ t: secondFeedStart, label: 'Second feed begins', note: 'Dark, boring — no talking', type: 'key' });
 
-    // 5. Hold + transfer
-    events.push({ t: secondFeedEnd, label: 'Hold — limp arm test', note: 'Heavy + slack mouth + slow breathing, then 2 more min', type: 'normal' });
-    const transfer = secondFeedEnd + 25;
-    const inCrib   = transfer + 10;
-    events.push({ t: transfer, label: 'Transfer attempt', note: 'Bottom → back → head. Hands on chest 30s', type: 'moon' });
-    events.push({ t: inCrib,   label: '🌙 In pack and play', note: null, type: 'moon' });
+    // 5. Into crib — note varies by age
+    const cribNote = ageWeeks <= 15
+      ? 'Drowsy, eyes flickering, still heavy'
+      : ageWeeks === 16
+      ? 'Drowsy but eyes open — put down before fully out'
+      : 'Awake and calm — let her settle herself';
+
+    events.push({ t: secondFeedEnd, label: '🌙 In pack and play', note: cribNote, type: 'moon' });
 
     // Render timeline
     document.getElementById('timeline').innerHTML = events.map(e => `
@@ -432,12 +451,12 @@
     badge.className   = 'badge ' + (isBath ? 'badge-bath' : 'badge-nobath');
 
     // Dinner banner
-    const banner    = document.getElementById('dinnerBanner');
-    const actualWW  = secondFeedStart - napEnd;
+    const banner   = document.getElementById('dinnerBanner');
+    const actualWW = secondFeedEnd - napEnd;
     if (dinnerStart <= DINNER_OPEN + 1) {
       banner.innerHTML = `⏰ <strong>Eat as early as possible (5:45)</strong> — wake window is already tight.`;
     } else if (dinnerStart >= DINNER_CLOSE - 1) {
-      banner.innerHTML = `⏰ <strong>Eat as late as possible (6:45)</strong> — helps stretch the wake window.`;
+      banner.innerHTML = `⏰ <strong>Eat as late as possible (7:00)</strong> — helps stretch the wake window.`;
     } else {
       banner.innerHTML = `🍽️ <strong>Aim to sit down around ${fmt(dinnerStart)}</strong> to hit the ideal wake window.`;
     }
@@ -487,15 +506,16 @@
   document.getElementById('napEnd').addEventListener('input', () => { saveState(); rebuild(); });
   document.getElementById('skipFirstFeed').addEventListener('change', () => { saveState(); rebuild(); });
 
-  // Wrap setMode/setNapQuality/onSlider to also save
+  // Wrap setMode/setNapQuality/onSlider to also save and refresh cutoff
   const _setMode = setMode;
-  setMode = (m) => { _setMode(m); saveState(); };
+  setMode = (m) => { _setMode(m); saveState(); updateNapCutoff(); };
   const _setNapQuality = setNapQuality;
   setNapQuality = (q) => { _setNapQuality(q); saveState(); };
   const _onSlider = onSlider;
-  onSlider = () => { _onSlider(); saveState(); };
+  onSlider = () => { _onSlider(); saveState(); updateNapCutoff(); };
 
   loadState();
+  updateNapCutoff();
   rebuild();
 </script>
 </body>
