@@ -242,7 +242,7 @@
 
   <!-- Age -->
   <div class="card">
-    <div class="card-label">Baby's Age</div>
+    <div class="card-label">Baby's Age <span id="estimatedAge" style="font-weight:400;color:var(--light);text-transform:none;letter-spacing:0;"></span></div>
     <div class="age-row">
       <div class="age-display" id="ageLabel">15 weeks</div>
       <div class="ww-badge" id="wwBadge">Wake window: 80–100 min</div>
@@ -317,6 +317,13 @@
   const DINNER_CLOSE = 19 * 60 + 0;
   const DINNER_DUR   = 20;
   const BATH_DUR     = 15;
+
+  const BIRTH_DATE = new Date(2026, 1, 25); // Feb 25, 2026
+
+  function calcAgeWeeks() {
+    const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+    return Math.floor((Date.now() - BIRTH_DATE.getTime()) / msPerWeek);
+  }
 
   let mode       = 'bath';
   let ageWeeks   = 15;
@@ -513,6 +520,17 @@
   setNapQuality = (q) => { _setNapQuality(q); saveState(); };
   const _onSlider = onSlider;
   onSlider = () => { _onSlider(); saveState(); updateNapCutoff(); };
+
+  // Default slider to calculated age from birth date (clamped to slider range)
+  const estimatedWeeks = Math.min(Math.max(calcAgeWeeks(), 15), 26);
+  document.getElementById('estimatedAge').textContent = `(estimated age: ${estimatedWeeks} weeks)`;
+  if (!localStorage.getItem('bss')) {
+    ageWeeks = estimatedWeeks;
+    document.getElementById('ageSlider').value = ageWeeks;
+    const [mn, mx] = getWW(ageWeeks);
+    document.getElementById('ageLabel').textContent = ageWeeks + ' weeks';
+    document.getElementById('wwBadge').textContent  = `Wake window: ${mn}–${mx} min`;
+  }
 
   loadState();
   updateNapCutoff();
