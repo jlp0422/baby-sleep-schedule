@@ -98,6 +98,15 @@
   .range-labels { display: flex; justify-content: space-between; margin-top: 5px; }
   .range-labels span { font-size: 0.65rem; color: var(--light); }
 
+  .reset-btn {
+    font-size: 0.6rem; font-weight: 400; font-family: 'Lato', sans-serif;
+    color: var(--light); background: none; border: none;
+    padding: 0; cursor: pointer; text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: color 0.15s;
+  }
+  .reset-btn:hover { color: var(--mid); }
+
   /* 3-way toggle (bath + nap quality) */
   .toggle-wrap {
     display: flex;
@@ -242,13 +251,17 @@
 
   <!-- Age -->
   <div class="card">
-    <div class="card-label">Baby's Age</div>
+    <div class="card-label">Baby's Age <span id="estimatedAge" style="font-weight:400;color:var(--light);text-transform:none;letter-spacing:0;"></span></div>
     <div class="age-row">
       <div class="age-display" id="ageLabel">15 weeks</div>
       <div class="ww-badge" id="wwBadge">Wake window: 80–100 min</div>
     </div>
     <input type="range" id="ageSlider" min="15" max="26" value="15" step="1" oninput="onSlider()" />
-    <div class="range-labels"><span>15 wks</span><span>26 wks</span></div>
+    <div class="range-labels">
+      <span>15 wks</span>
+      <button class="reset-btn" onclick="resetState()">Reset age</button>
+      <span>26 wks</span>
+    </div>
   </div>
 
   <!-- Tonight's routine -->
@@ -317,6 +330,17 @@
   const DINNER_CLOSE = 19 * 60 + 0;
   const DINNER_DUR   = 20;
   const BATH_DUR     = 15;
+
+  const BIRTH_DATE    = new Date(2026, 1, 25); // Feb 25, 2026
+  const AGE_MIN_WEEKS = 15;
+  const AGE_MAX_WEEKS = 26;
+
+  function calcAgeWeeks() {
+    const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+    return Math.floor((Date.now() - BIRTH_DATE.getTime()) / msPerWeek);
+  }
+
+  const estimatedWeeks = Math.min(Math.max(calcAgeWeeks(), AGE_MIN_WEEKS), AGE_MAX_WEEKS);
 
   let mode       = 'bath';
   let ageWeeks   = 15;
@@ -513,6 +537,27 @@
   setNapQuality = (q) => { _setNapQuality(q); saveState(); };
   const _onSlider = onSlider;
   onSlider = () => { _onSlider(); saveState(); updateNapCutoff(); };
+
+  function resetState() {
+    ageWeeks = estimatedWeeks;
+    document.getElementById('ageSlider').value = ageWeeks;
+    const [mn, mx] = getWW(ageWeeks);
+    document.getElementById('ageLabel').textContent = ageWeeks + ' weeks';
+    document.getElementById('wwBadge').textContent  = `Wake window: ${mn}–${mx} min`;
+    saveState();
+    updateNapCutoff();
+    rebuild();
+  }
+
+  // Default slider to calculated age from birth date (clamped to slider range)
+  document.getElementById('estimatedAge').textContent = `(estimated age: ${estimatedWeeks} weeks)`;
+  if (!localStorage.getItem('bss')) {
+    ageWeeks = estimatedWeeks;
+    document.getElementById('ageSlider').value = ageWeeks;
+    const [mn, mx] = getWW(ageWeeks);
+    document.getElementById('ageLabel').textContent = ageWeeks + ' weeks';
+    document.getElementById('wwBadge').textContent  = `Wake window: ${mn}–${mx} min`;
+  }
 
   loadState();
   updateNapCutoff();
