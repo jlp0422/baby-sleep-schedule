@@ -133,7 +133,7 @@
   .toggle-btn.active-normal { background: var(--accent); color: white; box-shadow: 0 2px 8px rgba(74,74,170,0.3); }
   .toggle-btn.active-long   { background: var(--ok); color: white; box-shadow: 0 2px 8px rgba(26,138,74,0.3); }
 
-  /* Skip first feed row */
+  /* Skip dinner row */
   .skip-row {
     display: flex;
     align-items: center;
@@ -267,16 +267,9 @@
   <!-- Tonight's routine -->
   <div class="card">
     <div class="card-label">Tonight's Routine</div>
-    <div class="toggle-wrap" style="margin-bottom:14px;">
+    <div class="toggle-wrap">
       <button class="toggle-btn active-bath" id="btnBath"   onclick="setMode('bath')">🛁 Bath Night</button>
       <button class="toggle-btn"             id="btnNoBath" onclick="setMode('nobath')">✨ No Bath</button>
-    </div>
-    <div class="skip-row">
-      <span class="skip-label">Skip first feed</span>
-      <label class="switch">
-        <input type="checkbox" id="skipFirstFeed" onchange="rebuild()" />
-        <span class="slider-sw"></span>
-      </label>
     </div>
   </div>
 
@@ -300,6 +293,17 @@
       <button class="toggle-btn" id="btnShort"  onclick="setNapQuality('short')">😴 Short (&lt;30m)</button>
       <button class="toggle-btn active-normal" id="btnNormal" onclick="setNapQuality('normal')">✓ Normal</button>
       <button class="toggle-btn" id="btnLong"   onclick="setNapQuality('long')">😊 Long (45m+)</button>
+    </div>
+  </div>
+
+  <!-- Skip dinner -->
+  <div class="card">
+    <div class="skip-row">
+      <span class="skip-label">Skip dinner tonight</span>
+      <label class="switch">
+        <input type="checkbox" id="skipDinner" onchange="rebuild()" />
+        <span class="slider-sw"></span>
+      </label>
     </div>
   </div>
 
@@ -389,13 +393,13 @@
 
   function round5(m) { return Math.round(m / 5) * 5; }
 
-  const BEDTIME_LATEST = 19 * 60 + 30; // 7:30pm
+  const BEDTIME_LATEST = 19 * 60; // 7:00pm
 
   function updateNapCutoff() {
     const [, wwMax] = getWW(ageWeeks);
     const cutoff    = round5(BEDTIME_LATEST - wwMax);
     document.getElementById('napCutoff').textContent     = fmt(cutoff);
-    document.getElementById('napCutoffNote').textContent = `7:30pm bedtime − ${wwMax} min max wake window`;
+    document.getElementById('napCutoffNote').textContent = `7:00pm bedtime − ${wwMax} min max wake window`;
   }
 
   function calcDinnerStart(napEnd, isBath) {
@@ -412,49 +416,61 @@
     const val = document.getElementById('napEnd').value;
     if (!val) return;
 
-    const napEnd      = round5(toMins(val));
-    const isBath      = mode === 'bath';
-    const skipFirst   = document.getElementById('skipFirstFeed').checked;
+    const napEnd        = round5(toMins(val));
+    const isBath        = mode === 'bath';
+    const isDinnerSkipped = document.getElementById('skipDinner').checked;
     const [wwMin, wwMax] = getWW(ageWeeks);
-    const targetWW    = getTargetWW();
-    const events      = [];
+    const targetWW      = getTargetWW();
+    const events        = [];
 
-    // 1. First feed (optional)
-    if (!skipFirst) {
-      events.push({ t: napEnd, label: 'Nap ends — first feed', note: 'Feed right away while calm', type: 'key' });
-    }
+    // 1. First feed (always shown)
+    events.push({ t: napEnd, label: 'Nap ends — first feed', note: 'Feed right away while calm', type: 'key' });
 
-    // 2. Dinner
-    const dinnerStart = calcDinnerStart(napEnd, isBath);
-    const dinnerEnd   = dinnerStart + DINNER_DUR;
-    events.push({ t: dinnerStart, label: `Dinner (${fmt(dinnerStart)})`, note: 'She joins — keep it calm', type: 'dinner' });
-    events.push({ t: dinnerEnd,   label: 'Dinner done', note: null, type: 'normal' });
-
-    // 3. Bath or dark room
+    // 2. Dinner (or skip straight to wind-down)
     let secondFeedStart;
-    if (isBath) {
-      const bathStart = dinnerEnd + 5;
-      const bathEnd   = bathStart + BATH_DUR;
-      secondFeedStart = bathEnd + 5;
-      events.push({ t: bathStart, label: '🛁 Bath begins', note: 'Warm, dim, quiet — part of wind-down', type: 'normal' });
-      events.push({ t: bathEnd,   label: 'Into dark quiet room', note: 'Sleep sack, swaddle', type: 'normal' });
+    if (isDinnerSkipped) {
+      // Work backwards from target crib time to place bath/dark room
+      const crib = napEnd + targetWW;
+      if (isBath) {
+        secondFeedStart       = crib - 15;
+        const bathEnd         = secondFeedStart - 5;
+        const bathStart       = bathEnd - BATH_DUR;
+        events.push({ t: bathStart, label: '🛁 Bath begins',          note: 'Warm, dim, quiet — part of wind-down', type: 'normal' });
+        events.push({ t: bathEnd,   label: 'Into dark quiet room',    note: 'Sleep sack, swaddle',                   type: 'normal' });
+      } else {
+        secondFeedStart       = crib - 15;
+        const darkRoom        = secondFeedStart - 5;
+        events.push({ t: darkRoom, label: 'Into dark quiet room',     note: 'Swaddle, white noise on',               type: 'normal' });
+      }
     } else {
-      const darkRoom  = dinnerEnd + 10;
-      secondFeedStart = darkRoom + 5;
-      events.push({ t: darkRoom, label: 'Into dark quiet room', note: 'Swaddle, white noise on', type: 'normal' });
+      const dinnerStart = calcDinnerStart(napEnd, isBath);
+      const dinnerEnd   = dinnerStart + DINNER_DUR;
+      events.push({ t: dinnerStart, label: `Dinner (${fmt(dinnerStart)})`, note: 'She joins — keep it calm', type: 'dinner' });
+      events.push({ t: dinnerEnd,   label: 'Dinner done',                  note: null,                        type: 'normal' });
+
+      if (isBath) {
+        const bathStart = dinnerEnd + 5;
+        const bathEnd   = bathStart + BATH_DUR;
+        secondFeedStart = bathEnd + 5;
+        events.push({ t: bathStart, label: '🛁 Bath begins',       note: 'Warm, dim, quiet — part of wind-down', type: 'normal' });
+        events.push({ t: bathEnd,   label: 'Into dark quiet room', note: 'Sleep sack, swaddle',                   type: 'normal' });
+      } else {
+        const darkRoom  = dinnerEnd + 10;
+        secondFeedStart = darkRoom + 5;
+        events.push({ t: darkRoom, label: 'Into dark quiet room',  note: 'Swaddle, white noise on',               type: 'normal' });
+      }
     }
 
-    // 4. Second feed
+    // 3. Second feed
     const secondFeedEnd = secondFeedStart + 15;
     events.push({ t: secondFeedStart, label: 'Second feed begins', note: 'Dark, boring — no talking', type: 'key' });
 
-    // 5. Into crib — note varies by age
+    // 4. Into crib — note varies by age
     const cribNote = ageWeeks <= 15
       ? 'Drowsy, eyes flickering, still heavy'
       : ageWeeks === 16
       ? 'Drowsy but eyes open — put down before fully out'
       : 'Awake and calm — let her settle herself';
-
     events.push({ t: secondFeedEnd, label: '🌙 In pack and play', note: cribNote, type: 'moon' });
 
     // Render timeline
@@ -474,26 +490,31 @@
     badge.textContent = isBath ? '🛁 Bath Night' : '✨ No Bath';
     badge.className   = 'badge ' + (isBath ? 'badge-bath' : 'badge-nobath');
 
-    // Dinner banner
+    // Dinner banner — only when dinner included
     const banner   = document.getElementById('dinnerBanner');
     const actualWW = secondFeedEnd - napEnd;
-    if (dinnerStart <= DINNER_OPEN + 1) {
-      banner.innerHTML = `⏰ <strong>Eat as early as possible (5:45)</strong> — wake window is already tight.`;
-    } else if (dinnerStart >= DINNER_CLOSE - 1) {
-      banner.innerHTML = `⏰ <strong>Eat as late as possible (7:00)</strong> — helps stretch the wake window.`;
+    if (!isDinnerSkipped) {
+      const dinnerStart = calcDinnerStart(napEnd, isBath);
+      if (dinnerStart <= DINNER_OPEN + 1) {
+        banner.innerHTML = `⏰ <strong>Eat as early as possible (5:45)</strong> — wake window is already tight.`;
+      } else if (dinnerStart >= DINNER_CLOSE - 1) {
+        banner.innerHTML = `⏰ <strong>Eat as late as possible (7:00)</strong> — helps stretch the wake window.`;
+      } else {
+        banner.innerHTML = `🍽️ <strong>Aim to sit down around ${fmt(dinnerStart)}</strong> to hit the ideal wake window.`;
+      }
+      banner.classList.add('visible');
     } else {
-      banner.innerHTML = `🍽️ <strong>Aim to sit down around ${fmt(dinnerStart)}</strong> to hit the ideal wake window.`;
+      banner.classList.remove('visible');
     }
-    banner.classList.add('visible');
 
-    // WW tip — compare against targetWW (nap-quality-adjusted), with ±5 min tolerance
-    const tipEl   = document.getElementById('wwTip');
-    const tolerance = 5;
-    const isOk    = Math.abs(actualWW - targetWW) <= tolerance;
-    const isShort = actualWW < targetWW - tolerance;
+    // WW tip
+    const tipEl      = document.getElementById('wwTip');
+    const tolerance  = 5;
+    const isOk       = Math.abs(actualWW - targetWW) <= tolerance;
+    const isShort    = actualWW < targetWW - tolerance;
     const qualityLabel = napQuality === 'short' ? 'short nap' : napQuality === 'long' ? 'long nap' : 'normal nap';
-    tipEl.className = 'ww-tip ' + (isOk ? 'ok' : isShort ? 'short' : 'long');
-    tipEl.innerHTML = `<strong>Wake window: ${actualWW} min</strong> · Target: ${targetWW} min (${qualityLabel}, ${ageWeeks} wks) · ${
+    tipEl.className  = 'ww-tip ' + (isOk ? 'ok' : isShort ? 'short' : 'long');
+    tipEl.innerHTML  = `<strong>Wake window: ${actualWW} min</strong> · Target: ${targetWW} min (${qualityLabel}, ${ageWeeks} wks) · ${
       isOk    ? '✓ Right on target.' :
       isShort ? '⚠️ A little short — she may not be tired enough yet.' :
                 '⚠️ Getting long — watch for overtired signs.'
@@ -505,11 +526,11 @@
   // Persist state to localStorage
   function saveState() {
     localStorage.setItem('bss', JSON.stringify({
-      napEnd:     document.getElementById('napEnd').value,
+      napEnd:      document.getElementById('napEnd').value,
       ageWeeks,
       mode,
       napQuality,
-      skipFirst:  document.getElementById('skipFirstFeed').checked,
+      skipDinner:  document.getElementById('skipDinner').checked,
     }));
   }
 
@@ -518,17 +539,17 @@
     try {
       const s = JSON.parse(localStorage.getItem('bss'));
       if (!s) return;
-      if (s.napEnd)     document.getElementById('napEnd').value = s.napEnd;
-      if (s.ageWeeks)   { ageWeeks = s.ageWeeks; document.getElementById('ageSlider').value = ageWeeks; const [mn,mx] = getWW(ageWeeks); document.getElementById('ageLabel').textContent = ageWeeks + ' weeks'; document.getElementById('wwBadge').textContent = `Wake window: ${mn}–${mx} min`; }
-      if (s.mode)       setMode(s.mode);
-      if (s.napQuality) setNapQuality(s.napQuality);
-      if (s.skipFirst)  document.getElementById('skipFirstFeed').checked = s.skipFirst;
+      if (s.napEnd)      document.getElementById('napEnd').value = s.napEnd;
+      if (s.ageWeeks)    { ageWeeks = s.ageWeeks; document.getElementById('ageSlider').value = ageWeeks; const [mn,mx] = getWW(ageWeeks); document.getElementById('ageLabel').textContent = ageWeeks + ' weeks'; document.getElementById('wwBadge').textContent = `Wake window: ${mn}–${mx} min`; }
+      if (s.mode)        setMode(s.mode);
+      if (s.napQuality)  setNapQuality(s.napQuality);
+      if (s.skipDinner)  document.getElementById('skipDinner').checked = s.skipDinner;
     } catch(e) {}
   }
 
   // Save on any change
-  document.getElementById('napEnd').addEventListener('input', () => { saveState(); rebuild(); });
-  document.getElementById('skipFirstFeed').addEventListener('change', () => { saveState(); rebuild(); });
+  document.getElementById('napEnd').addEventListener('input',    () => { saveState(); rebuild(); });
+  document.getElementById('skipDinner').addEventListener('change', () => { saveState(); rebuild(); });
 
   // Wrap setMode/setNapQuality/onSlider to also save and refresh cutoff
   const _setMode = setMode;
