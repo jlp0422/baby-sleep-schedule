@@ -420,70 +420,6 @@
 
   // Monthly developmental activity/toy content, adapted from Lovevery and Taking Cara Babies
   const MONTHLY_ACTIVITIES = {
-    0: {
-      theme: "Baby is adjusting to a new sensory world; focus is calming, bonding, and early visual/tactile wiring, not \"achieving\" milestones.",
-      activities: [
-        "Extended skin-to-skin contact",
-        "Very brief (1–2 min) tummy time, building to 15–30 min/day by ~7 weeks",
-        "Slow high-contrast visual tracking 8–12\" from the face",
-        "Silly-face / tongue-out imitation games",
-        "Narrate daily routines and \"tour\" rooms/objects in a calm voice",
-      ],
-      toys: ["High-contrast black-and-white cards/mobile", "Textured black-and-white mittens", "Soft first cloth/wooden book", "Simple grasp rattle"],
-      source: "Lovevery, Taking Cara Babies",
-      links: [
-        { label: "Lovevery", url: "https://blog.lovevery.com/age-range/0-12-weeks/" },
-        { label: "Taking Cara Babies", url: "https://www.takingcarababies.com/blogs/newborn/how-to-play-with-a-newborn" },
-      ],
-    },
-    1: {
-      theme: "Baby is uncurling from the fetal position and tuning into sights/sounds; early reflexive smiles appear.",
-      activities: [
-        "Continued \"home tours\" past mirrors, windows, and high-contrast objects like ceiling fans",
-        "Short consistent tummy time to build neck/shoulder strength",
-        "Give baby something firm to push against with their feet",
-        "Practice head-turning toward a parent's voice",
-        "Reading aloud for voice and closeness",
-      ],
-      toys: ["High-contrast cards/mobile", "Soft silky scarf for stroking hands/feet/belly", "Simple grasp rattle"],
-      source: "Lovevery, Taking Cara Babies",
-      links: [
-        { label: "Lovevery", url: "https://blog.lovevery.com/age-range/0-12-weeks/" },
-        { label: "Taking Cara Babies", url: "https://www.takingcarababies.com/blogs/sleep-schedules/1-month-old-sleep-schedule" },
-      ],
-    },
-    2: {
-      theme: "Vision sharpens for faces; first genuine social smiles (eyes lighting up, cooing) tend to emerge as an early social-emotional milestone.",
-      activities: [
-        "Turn caregiving routines into call-and-response play — narrate, pause, wait for eye contact, smile back",
-        "Extended tummy time as neck control improves",
-        "Wider-range visual tracking practice",
-        "Sensory-link play on a play gym",
-        "Simple narration, reading, and singing to build early language",
-      ],
-      toys: ["Busier/more detailed high-contrast cards", "Textured sensory links for a play gym", "Soft first book", "Grasp rattle"],
-      source: "Lovevery, Taking Cara Babies",
-      links: [
-        { label: "Lovevery", url: "https://blog.lovevery.com/age-range/0-12-weeks/" },
-        { label: "Taking Cara Babies", url: "https://www.takingcarababies.com/blogs/sleep-schedules/2-month-old-sleep-schedule" },
-      ],
-    },
-    3: {
-      theme: "Hands are opening from fists; core/leg strength builds toward rolling and sitting; developmental leaps around now can briefly disrupt sleep.",
-      activities: [
-        "More unrestrained floor time instead of swings/seats",
-        "Playmat/play-gym time to encourage reaching and swiping",
-        "Prop baby's tummy against a couch cushion facing you to practice head-lifting",
-        "Practice hand-to-hand object passing",
-        "Mirror play",
-      ],
-      toys: ["Soft crinkle-sound cloth book", "Small framed baby-safe mirror", "Rolling bell toy", "Soft ring teether"],
-      source: "Lovevery, Taking Cara Babies",
-      links: [
-        { label: "Lovevery", url: "https://blog.lovevery.com/age-range/3-4-months/" },
-        { label: "Taking Cara Babies", url: "https://www.takingcarababies.com/blogs/sleep-schedules/3-month-old-sleep-schedule" },
-      ],
-    },
     4: {
       theme: "Babies begin \"crossing the midline\" — coordinating left/right vision and reaching across the body's centerline; rolling belly-to-back emerges.",
       activities: [
@@ -644,7 +580,7 @@
   let mode       = 'bath';
   let ageWeeks   = 15;
   let napQuality = 'normal';
-  let selectedPlayMonth = 0;
+  let selectedPlayMonth = 4;
 
   function getWW(w) { return WW[Math.min(Math.max(w, 15), 26)]; }
 
@@ -875,16 +811,16 @@
   }
 
   function weeksToMonth(weeks) {
-    return Math.min(Math.max(Math.floor(weeks / 4.345), 0), 12);
+    return Math.min(Math.max(Math.floor(weeks / 4.345), 4), 12);
   }
 
   function renderMonthPills() {
     const wrap = document.getElementById('monthPills');
     wrap.innerHTML = '';
-    for (let m = 0; m <= 12; m++) {
+    for (let m = 4; m <= 12; m++) {
       const btn = document.createElement('button');
       btn.className = 'month-pill' + (m === selectedPlayMonth ? ' active' : '');
-      btn.textContent = m === 0 ? 'Newborn' : m + ' mo';
+      btn.textContent = m + ' mo';
       btn.onclick = () => selectPlayMonth(m);
       wrap.appendChild(btn);
     }
@@ -898,8 +834,7 @@
 
   function renderPlayContent() {
     const data = MONTHLY_ACTIVITIES[selectedPlayMonth];
-    document.getElementById('playMonthTitle').textContent =
-      selectedPlayMonth === 0 ? 'Newborn (0–4 weeks)' : `Month ${selectedPlayMonth}`;
+    document.getElementById('playMonthTitle').textContent = `Month ${selectedPlayMonth}`;
     document.getElementById('playTheme').textContent = data.theme;
     document.getElementById('playActivities').innerHTML = data.activities.map(a => `<li>${a}</li>`).join('');
     document.getElementById('playToys').innerHTML = data.toys.map(t => `<li>${t}</li>`).join('');
