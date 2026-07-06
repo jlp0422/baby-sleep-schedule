@@ -238,10 +238,63 @@
 
   #schedule { display: none; }
   #schedule.visible { display: block; }
+
+  /* Tab navigation — mirrors .toggle-wrap / .toggle-btn visual language */
+  .tab-nav {
+    display: flex;
+    background: var(--input);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 4px; gap: 4px;
+    margin-bottom: 24px;
+  }
+  .tab-btn {
+    flex: 1; border: none; border-radius: 9px;
+    padding: 12px 8px;
+    font-family: 'Lato', sans-serif; font-size: 0.9rem; font-weight: 700;
+    cursor: pointer; transition: all 0.2s;
+    color: var(--mid); background: transparent;
+  }
+  .tab-btn.active { background: var(--accent); color: white; box-shadow: 0 2px 8px rgba(74,74,170,0.3); }
+
+  .tab-panel { display: none; }
+  .tab-panel.visible { display: block; }
+
+  /* Month pill selector (Play tab) */
+  .month-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .month-pill {
+    border: 1.5px solid var(--border); border-radius: 20px;
+    padding: 6px 12px; font-size: 0.78rem; font-weight: 700;
+    color: var(--mid); background: var(--input); cursor: pointer;
+    transition: all 0.15s;
+  }
+  .month-pill.active {
+    background: var(--accent); color: white; border-color: var(--accent);
+    box-shadow: 0 2px 6px rgba(74,74,170,0.3);
+  }
+
+  /* Play content lists */
+  .play-theme { font-size: 0.92rem; color: var(--ink); line-height: 1.4; margin-bottom: 16px; font-style: italic; }
+  .play-list { list-style: none; padding: 0; margin: 0 0 4px; }
+  .play-list li {
+    font-size: 0.85rem; color: var(--ink); line-height: 1.4;
+    padding: 7px 0; border-bottom: 1px solid var(--border);
+  }
+  .play-list li:last-child { border-bottom: none; }
+  .play-source { font-size: 0.7rem; color: var(--mid); margin-top: 14px; }
+  .play-links { font-size: 0.75rem; margin-top: 4px; }
+  .play-links a { color: var(--accent); text-decoration: underline; }
 </style>
 </head>
 <body>
 <div class="max-width">
+
+  <div class="tab-nav">
+    <button class="tab-btn active" id="tabBtnSleep" onclick="showTab('sleep')">🌙 Sleep</button>
+    <button class="tab-btn"        id="tabBtnPlay"  onclick="showTab('play')">🧸 Play</button>
+  </div>
+
+  <div id="panelSleep" class="tab-panel visible">
 
   <header>
     <span class="icon">🌙</span>
@@ -318,6 +371,36 @@
     <div id="wwTip"></div>
   </div>
 
+  </div>
+
+  <div id="panelPlay" class="tab-panel">
+
+    <header>
+      <span class="icon">🧸</span>
+      <h1>Play &amp; <em>Development</em></h1>
+      <p>Ideas adapted from Lovevery and Taking Cara Babies — for personal reference, not medical advice</p>
+    </header>
+
+    <div class="card">
+      <div class="card-label">Choose a Month</div>
+      <div class="month-pills" id="monthPills"></div>
+    </div>
+
+    <div class="card" id="playCard">
+      <div class="schedule-header">
+        <div class="schedule-title" id="playMonthTitle">Month 4</div>
+      </div>
+      <div class="play-theme" id="playTheme"></div>
+      <div class="card-label">Suggested Activities</div>
+      <ul class="play-list" id="playActivities"></ul>
+      <div class="card-label">Toy Ideas</div>
+      <ul class="play-list" id="playToys"></ul>
+      <div class="play-source" id="playSource"></div>
+      <div class="play-links" id="playLinks"></div>
+    </div>
+
+  </div>
+
 </div>
 
 <script>
@@ -335,6 +418,218 @@
   const DINNER_DUR   = 20;
   const BATH_DUR     = 15;
 
+  // Monthly developmental activity/toy content, adapted from Lovevery and Taking Cara Babies
+  const MONTHLY_ACTIVITIES = {
+    0: {
+      theme: "Baby is adjusting to a new sensory world; focus is calming, bonding, and early visual/tactile wiring, not \"achieving\" milestones.",
+      activities: [
+        "Extended skin-to-skin contact",
+        "Very brief (1–2 min) tummy time, building to 15–30 min/day by ~7 weeks",
+        "Slow high-contrast visual tracking 8–12\" from the face",
+        "Silly-face / tongue-out imitation games",
+        "Narrate daily routines and \"tour\" rooms/objects in a calm voice",
+      ],
+      toys: ["High-contrast black-and-white cards/mobile", "Textured black-and-white mittens", "Soft first cloth/wooden book", "Simple grasp rattle"],
+      source: "Lovevery, Taking Cara Babies",
+      links: [
+        { label: "Lovevery", url: "https://blog.lovevery.com/age-range/0-12-weeks/" },
+        { label: "Taking Cara Babies", url: "https://www.takingcarababies.com/blogs/newborn/how-to-play-with-a-newborn" },
+      ],
+    },
+    1: {
+      theme: "Baby is uncurling from the fetal position and tuning into sights/sounds; early reflexive smiles appear.",
+      activities: [
+        "Continued \"home tours\" past mirrors, windows, and high-contrast objects like ceiling fans",
+        "Short consistent tummy time to build neck/shoulder strength",
+        "Give baby something firm to push against with their feet",
+        "Practice head-turning toward a parent's voice",
+        "Reading aloud for voice and closeness",
+      ],
+      toys: ["High-contrast cards/mobile", "Soft silky scarf for stroking hands/feet/belly", "Simple grasp rattle"],
+      source: "Lovevery, Taking Cara Babies",
+      links: [
+        { label: "Lovevery", url: "https://blog.lovevery.com/age-range/0-12-weeks/" },
+        { label: "Taking Cara Babies", url: "https://www.takingcarababies.com/blogs/sleep-schedules/1-month-old-sleep-schedule" },
+      ],
+    },
+    2: {
+      theme: "Vision sharpens for faces; first genuine social smiles (eyes lighting up, cooing) tend to emerge as an early social-emotional milestone.",
+      activities: [
+        "Turn caregiving routines into call-and-response play — narrate, pause, wait for eye contact, smile back",
+        "Extended tummy time as neck control improves",
+        "Wider-range visual tracking practice",
+        "Sensory-link play on a play gym",
+        "Simple narration, reading, and singing to build early language",
+      ],
+      toys: ["Busier/more detailed high-contrast cards", "Textured sensory links for a play gym", "Soft first book", "Grasp rattle"],
+      source: "Lovevery, Taking Cara Babies",
+      links: [
+        { label: "Lovevery", url: "https://blog.lovevery.com/age-range/0-12-weeks/" },
+        { label: "Taking Cara Babies", url: "https://www.takingcarababies.com/blogs/sleep-schedules/2-month-old-sleep-schedule" },
+      ],
+    },
+    3: {
+      theme: "Hands are opening from fists; core/leg strength builds toward rolling and sitting; developmental leaps around now can briefly disrupt sleep.",
+      activities: [
+        "More unrestrained floor time instead of swings/seats",
+        "Playmat/play-gym time to encourage reaching and swiping",
+        "Prop baby's tummy against a couch cushion facing you to practice head-lifting",
+        "Practice hand-to-hand object passing",
+        "Mirror play",
+      ],
+      toys: ["Soft crinkle-sound cloth book", "Small framed baby-safe mirror", "Rolling bell toy", "Soft ring teether"],
+      source: "Lovevery, Taking Cara Babies",
+      links: [
+        { label: "Lovevery", url: "https://blog.lovevery.com/age-range/3-4-months/" },
+        { label: "Taking Cara Babies", url: "https://www.takingcarababies.com/blogs/sleep-schedules/3-month-old-sleep-schedule" },
+      ],
+    },
+    4: {
+      theme: "Babies begin \"crossing the midline\" — coordinating left/right vision and reaching across the body's centerline; rolling belly-to-back emerges.",
+      activities: [
+        "Slowly move an object left-to-right to encourage midline-crossing tracking/reaching",
+        "Mirror-gazing sessions",
+        "Playmat/play-gym time for reaching and rolling practice",
+        "Practice hand-to-hand transfer",
+        "Regular reading and narrating",
+      ],
+      toys: ["Framed mirror", "Fabric rattle/rolling bell for side-to-side tracking", "Textured teether", "Transfer discs", "Simple picture cards"],
+      source: "Lovevery, Taking Cara Babies",
+      links: [
+        { label: "Lovevery", url: "https://blog.lovevery.com/age-range/3-4-months/" },
+        { label: "Taking Cara Babies", url: "https://www.takingcarababies.com/blogs/sleep-schedules/4-month-old-sleep-schedule" },
+      ],
+    },
+    5: {
+      theme: "Emerging body control (rolling both directions) plus maturing vision (color/depth) and early cause-and-effect understanding.",
+      activities: [
+        "Unrestricted floor time for rolling practice both ways",
+        "The \"Binky Game\" and mirror facial-expression play",
+        "A shoebox filled with safe household objects (tennis ball, cup, bells, ribbon) for open exploration",
+        "Back-and-forth babbling conversations",
+        "Peekaboo",
+      ],
+      toys: ["Lightweight textured rattle", "Soft easy-grip ball", "Simple-pattern board book", "Tummy-time support wedge", "Small shoebox/container for exploration"],
+      source: "Lovevery, Taking Cara Babies",
+      links: [
+        { label: "Lovevery", url: "https://blog.lovevery.com/age-range/5-6-months/" },
+        { label: "Taking Cara Babies", url: "https://www.takingcarababies.com/blogs/sleep-schedules/5-month-old-sleep-schedule" },
+      ],
+    },
+    6: {
+      theme: "Shift from reflexive coos to intentional babbling; solid-food readiness begins; independent sitting often emerges around now.",
+      activities: [
+        "Mirror and expand baby's babbling in real \"conversational\" turns",
+        "Reloadable tissue-pull box for fine-motor pulling",
+        "Container in/out play with toys, cups, or blocks",
+        "Hand-to-hand object transfer games",
+        "Supervised first tastes of purées/finger foods once readiness signs appear",
+      ],
+      toys: ["Fabric/tissue-pull box", "Container/cups/blocks for in-out play", "Light/sound toy", "Textured teething toy", "Wrist/ankle rattle"],
+      source: "Lovevery, Taking Cara Babies",
+      links: [
+        { label: "Lovevery", url: "https://blog.lovevery.com/age-range/5-6-months/" },
+        { label: "Taking Cara Babies", url: "https://www.takingcarababies.com/blogs/sleep-schedules/6-month-old-sleep-schedule" },
+      ],
+    },
+    7: {
+      theme: "True object permanence emerges; raking grasp begins refining toward pincer grasp; early mobility (scooting) and open-cup drinking skills begin.",
+      activities: [
+        "Hide a toy under a blanket/box for a search game, or peekaboo",
+        "Place an object just out of reach during tummy time to motivate scooting",
+        "Introduce a small open cup with ~1\" water at seated meals",
+        "Practice supported pull-to-stand against an adult or stable furniture",
+        "Texture exploration (blankets, brushes, O's cereal, yogurt) and stacking play",
+      ],
+      toys: ["Shallow \"treasure basket\" of safe household items", "Small open cup", "Lift-the-flap book", "Ball-drop box", "Touch-and-feel book", "Stacking cups"],
+      source: "Lovevery, Taking Cara Babies",
+      links: [
+        { label: "Lovevery", url: "https://blog.lovevery.com/age-range/7-8-months/" },
+        { label: "Taking Cara Babies", url: "https://takingcarababies.com/7-month-development-milestones-and-activities" },
+      ],
+    },
+    8: {
+      theme: "Stranger anxiety emerges; fine motor moves from raking toward true pincer grasp; baby starts understanding simple words like \"no,\" \"hi,\" and \"bye.\"",
+      activities: [
+        "Soft finger foods on a tray for pincer-grasp practice",
+        "Pull pom-poms through a whisk's wires one at a time",
+        "Practice supported pull-up-to-stand/sit-down during awake time",
+        "When new caregivers arrive, stay nearby, name the baby's wariness, then say a calm brief goodbye",
+        "Compare two similarly-shaped objects of different sizes while counting aloud",
+      ],
+      toys: ["Nesting/stacking cups", "Textured object/photo cards", "Large-knob first puzzle", "Wooden balls or ball-drop toy", "Zippered pouch for containment play"],
+      source: "Lovevery, Taking Cara Babies",
+      links: [
+        { label: "Lovevery", url: "https://blog.lovevery.com/age-range/7-8-months/" },
+        { label: "Taking Cara Babies", url: "https://www.takingcarababies.com/blogs/sleep-schedules/8-month-old-sleep-schedule" },
+      ],
+    },
+    9: {
+      theme: "Newly mobile (crawling); pincer grasp fuels self-feeding; object permanence solidifies — which is exactly why separation anxiety tends to peak now.",
+      activities: [
+        "Wave a scarf big/small in time with loud/soft music",
+        "Dangle baby-safe keys at eye level just out of reach to encourage crawling",
+        "Practice standing-up/plopping-down with a stable activity center",
+        "Knock over a small block tower",
+        "Peekaboo/hide-and-reveal with a blanket to reinforce object permanence",
+      ],
+      toys: ["Baby-safe key ring/linking toy", "Small block tower/stacking blocks", "Soft blanket for hide-and-reveal", "Ball pit or soft ball for grabbing/sitting practice", "Clear container/tube toy"],
+      source: "Lovevery, Taking Cara Babies",
+      links: [
+        { label: "Lovevery", url: "https://blog.lovevery.com/age-range/9-10-months/" },
+        { label: "Taking Cara Babies", url: "https://www.takingcarababies.com/blogs/sleep-schedules/9-month-old-sleep-schedule" },
+      ],
+    },
+    10: {
+      theme: "Fascination with cause-and-effect and the visible impact baby has on objects/people; growing responsiveness to spoken words/requests.",
+      activities: [
+        "Crawl-and-chase a ball through a play tunnel",
+        "Roll an object down a ramp into stacked blocks",
+        "Improvise \"instruments\" from household bowls/spoons paired with songs like \"Itsy Bitsy Spider\"",
+        "A supervised sensory bin with textured fillers (oats, beans)",
+        "Give simple directions (\"go get your ball\") and watch for comprehension",
+      ],
+      toys: ["Play tunnel", "Ramp/incline toy with a ball", "Stacking blocks", "Household \"instrument\" items (bowls, spoons)", "Sensory bin with safe textured filler"],
+      source: "Lovevery, Taking Cara Babies",
+      links: [
+        { label: "Lovevery", url: "https://blog.lovevery.com/age-range/9-10-months/" },
+        { label: "Taking Cara Babies", url: "https://www.takingcarababies.com/blogs/sleep-schedules/10-month-old-sleep-schedule" },
+      ],
+    },
+    11: {
+      theme: "More deliberate fine-motor problem solving and pre-walking gross-motor challenges; babies start intentionally releasing objects, cruising confidently, and imitating/pretend-playing.",
+      activities: [
+        "Sticky contact-paper wall/floor art for pressing pom-poms/scraps",
+        "Cruising practice along furniture or with an activity walker",
+        "Rolling a ball back and forth for hand-eye coordination",
+        "Hide-and-reveal games with boxes/containers",
+        "A safe kitchen \"explore drawer\" (containers, measuring cups) or pretend-play toy like a toy phone",
+      ],
+      toys: ["Posting/peg-drop toy", "Activity walker", "Simple ball", "Safe \"explore drawer\" household items", "Soft doll/figure or toy phone for pretend play"],
+      source: "Lovevery, Taking Cara Babies",
+      links: [
+        { label: "Lovevery", url: "https://blog.lovevery.com/age-range/11-12-months/" },
+        { label: "Taking Cara Babies", url: "https://www.takingcarababies.com/blogs/sleep-schedules/11-month-old-sleep-schedule" },
+      ],
+    },
+    12: {
+      theme: "Push toward walking (cruising, brief unsupported standing) and toward first words — both framed as ranges, not deadlines.",
+      activities: [
+        "Cruising practice holding low stable furniture",
+        "Outdoor play (park/swings)",
+        "Stacking games with blocks or household objects",
+        "Taste-safe playdough or a cereal-scooping sensory bin",
+        "Busy-board play (zippers, buttons, snaps) and lift-a-flap reading/singing",
+      ],
+      toys: ["Stacking blocks", "Busy board", "Taste-safe playdough or sensory bin", "Bath pouring/scooping set", "Simple board book with clear words"],
+      source: "Lovevery, Taking Cara Babies",
+      links: [
+        { label: "Lovevery", url: "https://blog.lovevery.com/age-range/11-12-months/" },
+        { label: "Taking Cara Babies", url: "https://www.takingcarababies.com/blogs/sleep-schedules/12-month-old-sleep-schedule" },
+      ],
+    },
+  };
+
   const BIRTH_DATE    = new Date(2026, 1, 25); // Feb 25, 2026
   const AGE_MIN_WEEKS = 15;
   const AGE_MAX_WEEKS = 26;
@@ -349,6 +644,7 @@
   let mode       = 'bath';
   let ageWeeks   = 15;
   let napQuality = 'normal';
+  let selectedPlayMonth = 0;
 
   function getWW(w) { return WW[Math.min(Math.max(w, 15), 26)]; }
 
@@ -570,6 +866,54 @@
     rebuild();
   }
 
+  // ── Play tab ──────────────────────────────────────────────────────────────
+  function showTab(tab) {
+    document.getElementById('panelSleep').classList.toggle('visible', tab === 'sleep');
+    document.getElementById('panelPlay').classList.toggle('visible', tab === 'play');
+    document.getElementById('tabBtnSleep').classList.toggle('active', tab === 'sleep');
+    document.getElementById('tabBtnPlay').classList.toggle('active', tab === 'play');
+  }
+
+  function weeksToMonth(weeks) {
+    return Math.min(Math.max(Math.floor(weeks / 4.345), 0), 12);
+  }
+
+  function renderMonthPills() {
+    const wrap = document.getElementById('monthPills');
+    wrap.innerHTML = '';
+    for (let m = 0; m <= 12; m++) {
+      const btn = document.createElement('button');
+      btn.className = 'month-pill' + (m === selectedPlayMonth ? ' active' : '');
+      btn.textContent = m === 0 ? 'Newborn' : m + ' mo';
+      btn.onclick = () => selectPlayMonth(m);
+      wrap.appendChild(btn);
+    }
+  }
+
+  function selectPlayMonth(m) {
+    selectedPlayMonth = m;
+    renderMonthPills();
+    renderPlayContent();
+  }
+
+  function renderPlayContent() {
+    const data = MONTHLY_ACTIVITIES[selectedPlayMonth];
+    document.getElementById('playMonthTitle').textContent =
+      selectedPlayMonth === 0 ? 'Newborn (0–4 weeks)' : `Month ${selectedPlayMonth}`;
+    document.getElementById('playTheme').textContent = data.theme;
+    document.getElementById('playActivities').innerHTML = data.activities.map(a => `<li>${a}</li>`).join('');
+    document.getElementById('playToys').innerHTML = data.toys.map(t => `<li>${t}</li>`).join('');
+    document.getElementById('playSource').textContent = `Source: ${data.source}`;
+    document.getElementById('playLinks').innerHTML = 'Learn more: ' +
+      data.links.map(l => `<a href="${l.url}" target="_blank" rel="noopener">${l.label}</a>`).join(' · ');
+  }
+
+  function initPlayTab() {
+    selectedPlayMonth = weeksToMonth(ageWeeks); // default only; clicking pills overrides freely
+    renderMonthPills();
+    renderPlayContent();
+  }
+
   // Default slider to calculated age from birth date (clamped to slider range)
   document.getElementById('estimatedAge').textContent = `(estimated age: ${estimatedWeeks} weeks)`;
   if (!localStorage.getItem('bss')) {
@@ -583,6 +927,7 @@
   loadState();
   updateNapCutoff();
   rebuild();
+  initPlayTab();
 </script>
 </body>
 </html>
