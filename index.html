@@ -417,6 +417,7 @@
   const DINNER_CLOSE = 19 * 60 + 0;
   const DINNER_DUR   = 20;
   const BATH_DUR     = 15;
+  const SHORT_NAP_WW_OFFSET = 20; // short nap → target WW is this much below the wake-window floor
 
   // Monthly developmental activity/toy content, adapted from Lovevery and Taking Cara Babies
   const MONTHLY_ACTIVITIES = {
@@ -587,7 +588,7 @@
   // Returns the single target wake window minute based on nap quality
   function getTargetWW() {
     const [wwMin, wwMax] = getWW(ageWeeks);
-    if (napQuality === 'short')  return wwMin;
+    if (napQuality === 'short')  return wwMin - SHORT_NAP_WW_OFFSET;
     if (napQuality === 'long')   return wwMax;
     return round5((wwMin + wwMax) / 2); // normal = midpoint
   }
