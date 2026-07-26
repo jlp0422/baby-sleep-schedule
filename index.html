@@ -418,6 +418,8 @@
   const DINNER_DUR   = 20;
   const BATH_DUR     = 15;
   const SHORT_NAP_WW_OFFSET = 20; // short nap → target WW is this much below the wake-window floor
+  const SECOND_FEED_DUR = 15; // second feed happens before the bedtime routine, not right before crib
+  const PRE_BED_BUFFER  = 15; // wind-down gap between end of bedtime routine and crib
 
   // Monthly developmental activity/toy content, adapted from Lovevery and Taking Cara Babies
   const MONTHLY_ACTIVITIES = {
@@ -636,12 +638,13 @@
   }
 
   function calcDinnerStart(napEnd, isBath) {
-    // Work backwards: crib = napEnd + targetWW, feed = crib - 15, pre-feed = bath or dark room
-    const postDinner = isBath ? (5 + BATH_DUR + 5) : (10 + 5);
-    const targetWW   = getTargetWW();
-    const idealCrib  = napEnd + targetWW;
-    const idealFeed  = idealCrib - 15; // feed duration
-    const idealDinner = idealFeed - postDinner - DINNER_DUR;
+    // Work backwards: crib = napEnd + targetWW; before crib is a pre-bed buffer,
+    // before that the bedtime routine (bath or dark room), before that the second feed
+    const routineDur  = isBath ? (5 + BATH_DUR) : 10; // gap into bath + bath, or gap straight to dark room
+    const postDinner  = 5 + SECOND_FEED_DUR + routineDur + PRE_BED_BUFFER; // dinner done → crib
+    const targetWW    = getTargetWW();
+    const idealCrib   = napEnd + targetWW;
+    const idealDinner = idealCrib - DINNER_DUR - postDinner;
     return round5(Math.min(Math.max(idealDinner, DINNER_OPEN), DINNER_CLOSE));
   }
 
@@ -659,52 +662,45 @@
     // 1. First feed (always shown)
     events.push({ t: napEnd, label: 'Nap ends — first feed', note: 'Feed right away while calm', type: 'key' });
 
-    // 2. Dinner (or skip straight to wind-down)
+    // 2. Dinner (or skip straight to second feed)
     let secondFeedStart;
     if (isDinnerSkipped) {
-      // Work backwards from target crib time to place bath/dark room
+      // Work backwards from target crib time, through the buffer, routine, and feed
       const crib = napEnd + targetWW;
-      if (isBath) {
-        secondFeedStart       = crib - 15;
-        const bathEnd         = secondFeedStart - 5;
-        const bathStart       = bathEnd - BATH_DUR;
-        events.push({ t: bathStart, label: '🛁 Bath begins',          note: 'Warm, dim, quiet — part of wind-down', type: 'normal' });
-        events.push({ t: bathEnd,   label: 'Into dark quiet room',    note: 'Sleep sack, swaddle',                   type: 'normal' });
-      } else {
-        secondFeedStart       = crib - 15;
-        const darkRoom        = secondFeedStart - 5;
-        events.push({ t: darkRoom, label: 'Into dark quiet room',     note: 'Swaddle, white noise on',               type: 'normal' });
-      }
+      const routineDur = isBath ? (5 + BATH_DUR) : 10;
+      secondFeedStart = crib - PRE_BED_BUFFER - routineDur - SECOND_FEED_DUR;
     } else {
       const dinnerStart = calcDinnerStart(napEnd, isBath);
       const dinnerEnd   = dinnerStart + DINNER_DUR;
       events.push({ t: dinnerStart, label: `Dinner (${fmt(dinnerStart)})`, note: 'She joins — keep it calm', type: 'dinner' });
       events.push({ t: dinnerEnd,   label: 'Dinner done',                  note: null,                        type: 'normal' });
-
-      if (isBath) {
-        const bathStart = dinnerEnd + 5;
-        const bathEnd   = bathStart + BATH_DUR;
-        secondFeedStart = bathEnd + 5;
-        events.push({ t: bathStart, label: '🛁 Bath begins',       note: 'Warm, dim, quiet — part of wind-down', type: 'normal' });
-        events.push({ t: bathEnd,   label: 'Into dark quiet room', note: 'Sleep sack, swaddle',                   type: 'normal' });
-      } else {
-        const darkRoom  = dinnerEnd + 10;
-        secondFeedStart = darkRoom + 5;
-        events.push({ t: darkRoom, label: 'Into dark quiet room',  note: 'Swaddle, white noise on',               type: 'normal' });
-      }
+      secondFeedStart = dinnerEnd + 5;
     }
 
-    // 3. Second feed
-    const secondFeedEnd = secondFeedStart + 15;
+    // 3. Second feed — earlier in the wake window, before the bedtime routine
+    const secondFeedEnd = secondFeedStart + SECOND_FEED_DUR;
     events.push({ t: secondFeedStart, label: 'Second feed begins', note: 'Dark, boring — no talking', type: 'key' });
 
-    // 4. Into crib — note varies by age
+    // 4. Bedtime routine (bath or dark room)
+    let routineEnd;
+    if (isBath) {
+      const bathStart = secondFeedEnd + 5;
+      routineEnd       = bathStart + BATH_DUR;
+      events.push({ t: bathStart, label: '🛁 Bath begins',       note: 'Warm, dim, quiet — part of wind-down', type: 'normal' });
+      events.push({ t: routineEnd, label: 'Into dark quiet room', note: 'Sleep sack, swaddle',                  type: 'normal' });
+    } else {
+      routineEnd = secondFeedEnd + 10;
+      events.push({ t: routineEnd, label: 'Into dark quiet room', note: 'Swaddle, white noise on', type: 'normal' });
+    }
+
+    // 5. Into crib after a short wind-down buffer — note varies by age
+    const cribTime = routineEnd + PRE_BED_BUFFER;
     const cribNote = ageWeeks <= 15
       ? 'Drowsy, eyes flickering, still heavy'
       : ageWeeks === 16
       ? 'Drowsy but eyes open — put down before fully out'
       : 'Awake and calm — let her settle herself';
-    events.push({ t: secondFeedEnd, label: '🌙 In pack and play', note: cribNote, type: 'moon' });
+    events.push({ t: cribTime, label: '🌙 In pack and play', note: cribNote, type: 'moon' });
 
     // Render timeline
     document.getElementById('timeline').innerHTML = events.map(e => `
@@ -725,7 +721,7 @@
 
     // Dinner banner — only when dinner included
     const banner   = document.getElementById('dinnerBanner');
-    const actualWW = secondFeedEnd - napEnd;
+    const actualWW = cribTime - napEnd;
     if (!isDinnerSkipped) {
       const dinnerStart = calcDinnerStart(napEnd, isBath);
       if (dinnerStart <= DINNER_OPEN + 1) {
