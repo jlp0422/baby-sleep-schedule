@@ -628,13 +628,13 @@
 
   function round5(m) { return Math.round(m / 5) * 5; }
 
-  const BEDTIME_LATEST = 19 * 60; // 7:00pm
+  const BEDTIME_LATEST = 19 * 60 + 30; // 7:30pm
 
   function updateNapCutoff() {
     const [, wwMax] = getWW(ageWeeks);
     const cutoff    = round5(BEDTIME_LATEST - wwMax);
     document.getElementById('napCutoff').textContent     = fmt(cutoff);
-    document.getElementById('napCutoffNote').textContent = `7:00pm bedtime − ${wwMax} min max wake window`;
+    document.getElementById('napCutoffNote').textContent = `7:30pm bedtime − ${wwMax} min max wake window`;
   }
 
   function calcDinnerStart(napEnd, isBath) {
