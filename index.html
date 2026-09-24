@@ -16,7 +16,6 @@
     --accent: #4a4aaa;
     --gold: #7a5800;
     --bath: #1a60b8;
-    --nobath: #5050a0;
     --page: #ededf4;
     --card: #ffffff;
     --border: #d0d0dc;
@@ -107,7 +106,7 @@
   }
   .reset-btn:hover { color: var(--mid); }
 
-  /* 3-way toggle (bath + nap quality) */
+  /* 3-way toggle (nap quality) */
   .toggle-wrap {
     display: flex;
     background: var(--input);
@@ -123,10 +122,6 @@
     color: var(--mid); background: transparent;
     white-space: nowrap;
   }
-
-  /* Bath toggle colors */
-  .toggle-btn.active-bath   { background: var(--bath);   color: white; box-shadow: 0 2px 8px rgba(26,96,184,0.3); }
-  .toggle-btn.active-nobath { background: var(--nobath); color: white; box-shadow: 0 2px 8px rgba(80,80,160,0.3); }
 
   /* Nap quality colors */
   .toggle-btn.active-short  { background: #c04040; color: white; box-shadow: 0 2px 8px rgba(192,64,64,0.3); }
@@ -188,7 +183,6 @@
 
   .badge { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; padding: 3px 9px; border-radius: 20px; }
   .badge-bath   { background: #ddeeff; color: var(--bath);   border: 1.5px solid #b0ccee; }
-  .badge-nobath { background: #e8e8f8; color: var(--nobath); border: 1.5px solid #c0c0e0; }
 
   .timeline { display: flex; flex-direction: column; }
 
@@ -299,7 +293,7 @@
   <header>
     <span class="icon">🌙</span>
     <h1>Tonight's <em>Bedtime</em> Schedule</h1>
-    <p>Dinner anytime 5:45–7:00 · 20 min to eat</p>
+    <p>Dinner anytime 5:30–7:00 · 30 min to eat</p>
   </header>
 
   <!-- Age -->
@@ -314,15 +308,6 @@
       <span>15 wks</span>
       <button class="reset-btn" onclick="resetState()">Reset age</button>
       <span>36 wks</span>
-    </div>
-  </div>
-
-  <!-- Tonight's routine -->
-  <div class="card">
-    <div class="card-label">Tonight's Routine</div>
-    <div class="toggle-wrap">
-      <button class="toggle-btn active-bath" id="btnBath"   onclick="setMode('bath')">🛁 Bath Night</button>
-      <button class="toggle-btn"             id="btnNoBath" onclick="setMode('nobath')">✨ No Bath</button>
     </div>
   </div>
 
@@ -365,7 +350,7 @@
   <div class="card" id="schedule">
     <div class="schedule-header">
       <div class="schedule-title">Tonight's Plan</div>
-      <span class="badge badge-bath" id="modeBadge">Bath Night</span>
+      <span class="badge badge-bath">🛁 Bath Night</span>
     </div>
     <div class="timeline" id="timeline"></div>
     <div id="wwTip"></div>
@@ -416,13 +401,13 @@
     33: [165, 195], 34: [170, 200], 35: [175, 205], 36: [180, 210],
   };
 
-  const DINNER_OPEN  = 17 * 60 + 45;
+  const DINNER_OPEN  = 17 * 60 + 30;
   const DINNER_CLOSE = 19 * 60 + 0;
-  const DINNER_DUR   = 20;
+  const DINNER_DUR   = 30;
   const BATH_DUR     = 15;
   const SHORT_NAP_WW_OFFSET = 20; // short nap → target WW is this much below the wake-window floor
-  const SECOND_FEED_DUR = 15; // second feed duration
-  const WIND_DOWN_DUR   = 15; // books & singing, between second feed and crib
+  const SECOND_FEED_DUR = 20; // second feed duration (now BLW dinner-adjacent, takes longer)
+  const FEED_TO_CRIB_GAP = 2; // brief gap between end of second feed and crib
 
   // Monthly developmental activity/toy content, adapted from Lovevery and Taking Cara Babies
   const MONTHLY_ACTIVITIES = {
@@ -583,7 +568,6 @@
 
   const estimatedWeeks = Math.min(Math.max(calcAgeWeeks(), AGE_MIN_WEEKS), AGE_MAX_WEEKS);
 
-  let mode       = 'bath';
   let ageWeeks   = 15;
   let napQuality = 'normal';
   let selectedPlayMonth = 4;
@@ -596,13 +580,6 @@
     if (napQuality === 'short')  return wwMin - SHORT_NAP_WW_OFFSET;
     if (napQuality === 'long')   return wwMax;
     return round5((wwMin + wwMax) / 2); // normal = midpoint
-  }
-
-  function setMode(m) {
-    mode = m;
-    document.getElementById('btnBath').className   = 'toggle-btn' + (m === 'bath'   ? ' active-bath'   : '');
-    document.getElementById('btnNoBath').className = 'toggle-btn' + (m === 'nobath' ? ' active-nobath' : '');
-    rebuild();
   }
 
   function setNapQuality(q) {
@@ -640,11 +617,11 @@
     document.getElementById('napCutoffNote').textContent = `7:30pm bedtime − ${wwMax} min max wake window`;
   }
 
-  function calcDinnerStart(napEnd, isBath) {
-    // Work backwards: crib = napEnd + targetWW; before crib is wind-down time,
-    // before that the second feed, before that the bedtime routine (bath or dark room)
-    const routineGap  = isBath ? (5 + BATH_DUR + 5) : (10 + 5); // dinner done → feed start
-    const postDinner  = routineGap + SECOND_FEED_DUR + WIND_DOWN_DUR; // dinner done → crib
+  function calcDinnerStart(napEnd) {
+    // Work backwards: crib = napEnd + targetWW; before crib is a brief gap,
+    // before that the second feed, before that bath
+    const routineGap  = 5 + BATH_DUR + 5; // dinner done → feed start (into bath, bath, out to feed)
+    const postDinner  = routineGap + SECOND_FEED_DUR + FEED_TO_CRIB_GAP; // dinner done → crib
     const targetWW    = getTargetWW();
     const idealCrib   = napEnd + targetWW;
     const idealDinner = idealCrib - DINNER_DUR - postDinner;
@@ -656,7 +633,6 @@
     if (!val) return;
 
     const napEnd        = round5(toMins(val));
-    const isBath        = mode === 'bath';
     const isDinnerSkipped = document.getElementById('skipDinner').checked;
     const [wwMin, wwMax] = getWW(ageWeeks);
     const targetWW      = getTargetWW();
@@ -665,49 +641,35 @@
     // 1. First feed (always shown)
     events.push({ t: napEnd, label: 'Nap ends — first feed', note: 'Feed right away while calm', type: 'key' });
 
-    // 2. Dinner (or skip straight to bedtime routine)
+    // 2. Dinner (or skip straight to bath)
     let secondFeedStart;
     if (isDinnerSkipped) {
-      // Work backwards from target crib time, through wind-down, feed, and routine
+      // Work backwards from target crib time, through the gap, feed, and bath
       const crib = napEnd + targetWW;
-      secondFeedStart = crib - WIND_DOWN_DUR - SECOND_FEED_DUR;
-      if (isBath) {
-        const bathEnd   = secondFeedStart - 5;
-        const bathStart = bathEnd - BATH_DUR;
-        events.push({ t: bathStart, label: '🛁 Bath begins',       note: 'Warm, dim, quiet — part of wind-down', type: 'normal' });
-        events.push({ t: bathEnd,   label: 'Into dark quiet room', note: 'Sleep sack, swaddle',                   type: 'normal' });
-      } else {
-        const darkRoom = secondFeedStart - 5;
-        events.push({ t: darkRoom, label: 'Into dark quiet room', note: 'Swaddle, white noise on', type: 'normal' });
-      }
+      secondFeedStart  = crib - FEED_TO_CRIB_GAP - SECOND_FEED_DUR;
+      const bathEnd    = secondFeedStart - 5;
+      const bathStart  = bathEnd - BATH_DUR;
+      events.push({ t: bathStart, label: '🛁 Bath begins',       note: 'Warm, dim, quiet — part of wind-down', type: 'normal' });
+      events.push({ t: bathEnd,   label: 'Into dark quiet room', note: 'Sleep sack, swaddle',                   type: 'normal' });
     } else {
-      const dinnerStart = calcDinnerStart(napEnd, isBath);
+      const dinnerStart = calcDinnerStart(napEnd);
       const dinnerEnd   = dinnerStart + DINNER_DUR;
       events.push({ t: dinnerStart, label: `Dinner (${fmt(dinnerStart)})`, note: 'She joins — keep it calm', type: 'dinner' });
       events.push({ t: dinnerEnd,   label: 'Dinner done',                  note: null,                        type: 'normal' });
 
-      if (isBath) {
-        const bathStart = dinnerEnd + 5;
-        const bathEnd   = bathStart + BATH_DUR;
-        secondFeedStart = bathEnd + 5;
-        events.push({ t: bathStart, label: '🛁 Bath begins',       note: 'Warm, dim, quiet — part of wind-down', type: 'normal' });
-        events.push({ t: bathEnd,   label: 'Into dark quiet room', note: 'Sleep sack, swaddle',                   type: 'normal' });
-      } else {
-        const darkRoom  = dinnerEnd + 10;
-        secondFeedStart = darkRoom + 5;
-        events.push({ t: darkRoom, label: 'Into dark quiet room',  note: 'Swaddle, white noise on',               type: 'normal' });
-      }
+      const bathStart = dinnerEnd + 5;
+      const bathEnd    = bathStart + BATH_DUR;
+      secondFeedStart  = bathEnd + 5;
+      events.push({ t: bathStart, label: '🛁 Bath begins',       note: 'Warm, dim, quiet — part of wind-down', type: 'normal' });
+      events.push({ t: bathEnd,   label: 'Into dark quiet room', note: 'Sleep sack, swaddle',                   type: 'normal' });
     }
 
     // 3. Second feed
     const secondFeedEnd = secondFeedStart + SECOND_FEED_DUR;
     events.push({ t: secondFeedStart, label: 'Second feed begins', note: 'Dark, boring — no talking', type: 'key' });
 
-    // 4. Wind-down — books & singing, right before crib
-    const cribTime = secondFeedEnd + WIND_DOWN_DUR;
-    events.push({ t: secondFeedEnd, label: 'Wind-down — books & singing', note: 'Calm, quiet connection before crib', type: 'normal' });
-
-    // 5. Into crib — note varies by age
+    // 4. Into crib — just a couple minutes after the second feed ends
+    const cribTime = secondFeedEnd + FEED_TO_CRIB_GAP;
     const cribNote = ageWeeks <= 15
       ? 'Drowsy, eyes flickering, still heavy'
       : ageWeeks === 16
@@ -727,18 +689,13 @@
       </div>
     `).join('');
 
-    // Badge
-    const badge = document.getElementById('modeBadge');
-    badge.textContent = isBath ? '🛁 Bath Night' : '✨ No Bath';
-    badge.className   = 'badge ' + (isBath ? 'badge-bath' : 'badge-nobath');
-
     // Dinner banner — only when dinner included
     const banner   = document.getElementById('dinnerBanner');
     const actualWW = cribTime - napEnd;
     if (!isDinnerSkipped) {
-      const dinnerStart = calcDinnerStart(napEnd, isBath);
+      const dinnerStart = calcDinnerStart(napEnd);
       if (dinnerStart <= DINNER_OPEN + 1) {
-        banner.innerHTML = `⏰ <strong>Eat as early as possible (5:45)</strong> — wake window is already tight.`;
+        banner.innerHTML = `⏰ <strong>Eat as early as possible (5:30)</strong> — wake window is already tight.`;
       } else if (dinnerStart >= DINNER_CLOSE - 1) {
         banner.innerHTML = `⏰ <strong>Eat as late as possible (7:00)</strong> — helps stretch the wake window.`;
       } else {
@@ -770,7 +727,6 @@
     localStorage.setItem('bss', JSON.stringify({
       napEnd:      document.getElementById('napEnd').value,
       ageWeeks,
-      mode,
       napQuality,
       skipDinner:  document.getElementById('skipDinner').checked,
     }));
@@ -783,7 +739,6 @@
       if (!s) return;
       if (s.napEnd)      document.getElementById('napEnd').value = s.napEnd;
       if (s.ageWeeks)    { ageWeeks = s.ageWeeks; document.getElementById('ageSlider').value = ageWeeks; const [mn,mx] = getWW(ageWeeks); document.getElementById('ageLabel').textContent = ageWeeks + ' weeks'; document.getElementById('wwBadge').textContent = `Wake window: ${mn}–${mx} min`; }
-      if (s.mode)        setMode(s.mode);
       if (s.napQuality)  setNapQuality(s.napQuality);
       if (s.skipDinner)  document.getElementById('skipDinner').checked = s.skipDinner;
     } catch(e) {}
@@ -793,9 +748,7 @@
   document.getElementById('napEnd').addEventListener('input',    () => { saveState(); rebuild(); });
   document.getElementById('skipDinner').addEventListener('change', () => { saveState(); rebuild(); });
 
-  // Wrap setMode/setNapQuality/onSlider to also save and refresh cutoff
-  const _setMode = setMode;
-  setMode = (m) => { _setMode(m); saveState(); updateNapCutoff(); };
+  // Wrap setNapQuality/onSlider to also save and refresh cutoff
   const _setNapQuality = setNapQuality;
   setNapQuality = (q) => { _setNapQuality(q); saveState(); };
   const _onSlider = onSlider;
