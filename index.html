@@ -293,7 +293,7 @@
   <header>
     <span class="icon">🌙</span>
     <h1>Tonight's <em>Bedtime</em> Schedule</h1>
-    <p>Dinner anytime 5:30–7:00 · 30 min to eat</p>
+    <p>Dinner anytime 5:30–6:00 · 30 min to eat</p>
   </header>
 
   <!-- Age -->
@@ -401,7 +401,7 @@
   };
 
   const DINNER_OPEN  = 17 * 60 + 30;
-  const DINNER_CLOSE = 19 * 60 + 0;
+  const DINNER_CLOSE = 18 * 60 + 0;
   const DINNER_DUR   = 30;
   const BATH_DUR     = 15;
   const SHORT_NAP_WW_OFFSET = 20; // short nap → target WW is this much below the wake-window floor
@@ -623,7 +623,7 @@
     document.getElementById('napCutoffNote').textContent = `7:30pm bedtime − ${wwMax} min max wake window`;
   }
 
-  function calcDinnerStart(napEnd) {
+  function calcDinnerPlan(napEnd) {
     // Work backwards: crib = napEnd + targetWW; before crib is a brief gap,
     // before that the second feed, before that bath
     const routineGap  = 5 + BATH_DUR + 5; // dinner done → feed start (into bath, bath, out to feed)
@@ -631,7 +631,11 @@
     const targetWW    = getTargetWW();
     const idealCrib   = napEnd + targetWW;
     const idealDinner = idealCrib - DINNER_DUR - postDinner;
-    return round5(Math.min(Math.max(idealDinner, DINNER_OPEN), DINNER_CLOSE));
+    const dinnerStart = round5(Math.min(Math.max(idealDinner, DINNER_OPEN), DINNER_CLOSE));
+    // Dinner can't start later than DINNER_CLOSE — if hitting the target WW would need
+    // a later dinner, make up the difference with optional playtime after bath instead
+    const extraPlaytime = Math.max(0, round5(idealDinner - DINNER_CLOSE));
+    return { dinnerStart, extraPlaytime };
   }
 
   function rebuild() {
@@ -658,16 +662,23 @@
       events.push({ t: bathStart, label: '🛁 Bath begins',       note: 'Warm, dim, quiet — part of wind-down', type: 'normal' });
       events.push({ t: bathEnd,   label: 'Into dark quiet room', note: 'Sleep sack, swaddle',                   type: 'normal' });
     } else {
-      const dinnerStart = calcDinnerStart(napEnd);
+      const { dinnerStart, extraPlaytime } = calcDinnerPlan(napEnd);
       const dinnerEnd   = dinnerStart + DINNER_DUR;
       events.push({ t: dinnerStart, label: `Dinner (${fmt(dinnerStart)})`, note: 'She joins — keep it calm', type: 'dinner' });
       events.push({ t: dinnerEnd,   label: 'Dinner done',                  note: null,                        type: 'normal' });
 
       const bathStart = dinnerEnd + 5;
       const bathEnd    = bathStart + BATH_DUR;
-      secondFeedStart  = bathEnd + 5;
       events.push({ t: bathStart, label: '🛁 Bath begins',       note: 'Warm, dim, quiet — part of wind-down', type: 'normal' });
       events.push({ t: bathEnd,   label: 'Into dark quiet room', note: 'Sleep sack, swaddle',                   type: 'normal' });
+
+      if (extraPlaytime > 0) {
+        const playtimeEnd = bathEnd + 5 + extraPlaytime;
+        events.push({ t: bathEnd + 5, label: '🧸 Optional quiet playtime in bedroom', note: null, type: 'normal' });
+        secondFeedStart = playtimeEnd;
+      } else {
+        secondFeedStart = bathEnd + 5;
+      }
     }
 
     // 3. Second feed
@@ -694,11 +705,13 @@
     const banner   = document.getElementById('dinnerBanner');
     const actualWW = cribTime - napEnd;
     if (!isDinnerSkipped) {
-      const dinnerStart = calcDinnerStart(napEnd);
+      const { dinnerStart, extraPlaytime } = calcDinnerPlan(napEnd);
       if (dinnerStart <= DINNER_OPEN + 1) {
         banner.innerHTML = `⏰ <strong>Eat as early as possible (5:30)</strong> — wake window is already tight.`;
       } else if (dinnerStart >= DINNER_CLOSE - 1) {
-        banner.innerHTML = `⏰ <strong>Eat as late as possible (7:00)</strong> — helps stretch the wake window.`;
+        banner.innerHTML = extraPlaytime > 0
+          ? `⏰ <strong>Eat as late as possible (6:00)</strong> — then add ~${fmtDuration(extraPlaytime)} of quiet playtime after bath to hit the wake window.`
+          : `⏰ <strong>Eat as late as possible (6:00)</strong> — helps stretch the wake window.`;
       } else {
         banner.innerHTML = `🍽️ <strong>Aim to sit down around ${fmt(dinnerStart)}</strong> to hit the ideal wake window.`;
       }
