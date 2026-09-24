@@ -301,7 +301,7 @@
     <div class="card-label">Baby's Age <span id="estimatedAge" style="font-weight:400;color:var(--light);text-transform:none;letter-spacing:0;"></span></div>
     <div class="age-row">
       <div class="age-display" id="ageLabel">29 weeks</div>
-      <div class="ww-badge" id="wwBadge">Wake window: 135–170 min</div>
+      <div class="ww-badge" id="wwBadge">Wake window: 2hr15–2hr50</div>
     </div>
     <input type="range" id="ageSlider" min="29" max="52" value="29" step="1" oninput="onSlider()" />
     <div class="range-labels">
@@ -593,7 +593,7 @@
     ageWeeks = parseInt(document.getElementById('ageSlider').value);
     const [mn, mx] = getWW(ageWeeks);
     document.getElementById('ageLabel').textContent = ageWeeks + ' weeks';
-    document.getElementById('wwBadge').textContent  = `Wake window: ${mn}–${mx} min`;
+    document.getElementById('wwBadge').textContent  = `Wake window: ${fmtDuration(mn)}–${fmtDuration(mx)}`;
     rebuild();
   }
 
@@ -606,6 +606,13 @@
   }
 
   function round5(m) { return Math.round(m / 5) * 5; }
+
+  function fmtDuration(totalMin) {
+    const h = Math.floor(totalMin / 60), m = totalMin % 60;
+    if (h === 0) return `${m}min`;
+    if (m === 0) return `${h}hr`;
+    return `${h}hr${m}`;
+  }
 
   const BEDTIME_LATEST = 19 * 60 + 30; // 7:30pm
 
@@ -732,7 +739,7 @@
       const s = JSON.parse(localStorage.getItem('bss'));
       if (!s) return;
       if (s.napEnd)      document.getElementById('napEnd').value = s.napEnd;
-      if (s.ageWeeks)    { ageWeeks = s.ageWeeks; document.getElementById('ageSlider').value = ageWeeks; const [mn,mx] = getWW(ageWeeks); document.getElementById('ageLabel').textContent = ageWeeks + ' weeks'; document.getElementById('wwBadge').textContent = `Wake window: ${mn}–${mx} min`; }
+      if (s.ageWeeks)    { ageWeeks = s.ageWeeks; document.getElementById('ageSlider').value = ageWeeks; const [mn,mx] = getWW(ageWeeks); document.getElementById('ageLabel').textContent = ageWeeks + ' weeks'; document.getElementById('wwBadge').textContent = `Wake window: ${fmtDuration(mn)}–${fmtDuration(mx)}`; }
       if (s.napQuality)  setNapQuality(s.napQuality);
       if (s.skipDinner)  document.getElementById('skipDinner').checked = s.skipDinner;
     } catch(e) {}
@@ -753,7 +760,7 @@
     document.getElementById('ageSlider').value = ageWeeks;
     const [mn, mx] = getWW(ageWeeks);
     document.getElementById('ageLabel').textContent = ageWeeks + ' weeks';
-    document.getElementById('wwBadge').textContent  = `Wake window: ${mn}–${mx} min`;
+    document.getElementById('wwBadge').textContent  = `Wake window: ${fmtDuration(mn)}–${fmtDuration(mx)}`;
     saveState();
     updateNapCutoff();
     rebuild();
@@ -813,7 +820,7 @@
     document.getElementById('ageSlider').value = ageWeeks;
     const [mn, mx] = getWW(ageWeeks);
     document.getElementById('ageLabel').textContent = ageWeeks + ' weeks';
-    document.getElementById('wwBadge').textContent  = `Wake window: ${mn}–${mx} min`;
+    document.getElementById('wwBadge').textContent  = `Wake window: ${fmtDuration(mn)}–${fmtDuration(mx)}`;
   }
 
   loadState();
