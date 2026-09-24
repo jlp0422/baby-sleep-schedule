@@ -406,7 +406,7 @@
   const BATH_DUR     = 15;
   const SHORT_NAP_WW_OFFSET = 20; // short nap → target WW is this much below the wake-window floor
   const SECOND_FEED_DUR = 20; // second feed duration (now BLW dinner-adjacent, takes longer)
-  const FEED_TO_CRIB_GAP = 2; // brief gap between end of second feed and crib
+  const FEED_TO_CRIB_GAP = 5; // gap between end of second feed and crib (second feed to crib totals 25 min)
 
   // Monthly developmental activity/toy content, adapted from Lovevery and Taking Cara Babies
   const MONTHLY_ACTIVITIES = {
@@ -649,7 +649,7 @@
     const events        = [];
 
     // 1. First feed (always shown)
-    events.push({ t: napEnd, label: 'Nap ends — first feed', type: 'key' });
+    events.push({ t: napEnd, label: 'Nap ends — first feed (optional)', type: 'key' });
 
     // 2. Dinner (or skip straight to bath)
     let secondFeedStart;
