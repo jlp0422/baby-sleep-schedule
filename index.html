@@ -649,7 +649,7 @@
     const events        = [];
 
     // 1. First feed (always shown)
-    events.push({ t: napEnd, label: 'Nap ends — first feed', note: 'Feed right away while calm', type: 'key' });
+    events.push({ t: napEnd, label: 'Nap ends — first feed', type: 'key' });
 
     // 2. Dinner (or skip straight to bath)
     let secondFeedStart;
@@ -659,22 +659,22 @@
       secondFeedStart  = crib - FEED_TO_CRIB_GAP - SECOND_FEED_DUR;
       const bathEnd    = secondFeedStart - 5;
       const bathStart  = bathEnd - BATH_DUR;
-      events.push({ t: bathStart, label: '🛁 Bath begins',       note: 'Warm, dim, quiet — part of wind-down', type: 'normal' });
-      events.push({ t: bathEnd,   label: 'Into dark quiet room', note: 'Sleep sack, swaddle',                   type: 'normal' });
+      events.push({ t: bathStart, label: '🛁 Bath begins',       type: 'normal' });
+      events.push({ t: bathEnd,   label: 'Into dark quiet room', type: 'normal' });
     } else {
       const { dinnerStart, extraPlaytime } = calcDinnerPlan(napEnd);
       const dinnerEnd   = dinnerStart + DINNER_DUR;
-      events.push({ t: dinnerStart, label: `Dinner (${fmt(dinnerStart)})`, note: 'She joins — keep it calm', type: 'dinner' });
-      events.push({ t: dinnerEnd,   label: 'Dinner done',                  note: null,                        type: 'normal' });
+      events.push({ t: dinnerStart, label: `Dinner (${fmt(dinnerStart)})`, type: 'dinner' });
+      events.push({ t: dinnerEnd,   label: 'Dinner done',                  type: 'normal' });
 
       const bathStart = dinnerEnd + 5;
       const bathEnd    = bathStart + BATH_DUR;
-      events.push({ t: bathStart, label: '🛁 Bath begins',       note: 'Warm, dim, quiet — part of wind-down', type: 'normal' });
-      events.push({ t: bathEnd,   label: 'Into dark quiet room', note: 'Sleep sack, swaddle',                   type: 'normal' });
+      events.push({ t: bathStart, label: '🛁 Bath begins',       type: 'normal' });
+      events.push({ t: bathEnd,   label: 'Into dark quiet room', type: 'normal' });
 
       if (extraPlaytime > 0) {
         const playtimeEnd = bathEnd + 5 + extraPlaytime;
-        events.push({ t: bathEnd + 5, label: '🧸 Optional quiet playtime in bedroom', note: null, type: 'normal' });
+        events.push({ t: bathEnd + 5, label: '🧸 Optional quiet playtime in bedroom', type: 'normal' });
         secondFeedStart = playtimeEnd;
       } else {
         secondFeedStart = bathEnd + 5;
@@ -683,11 +683,11 @@
 
     // 3. Second feed
     const secondFeedEnd = secondFeedStart + SECOND_FEED_DUR;
-    events.push({ t: secondFeedStart, label: 'Second feed begins', note: 'Dark, boring — no talking', type: 'key' });
+    events.push({ t: secondFeedStart, label: 'Second feed begins', type: 'key' });
 
     // 4. Into crib — just a couple minutes after the second feed ends
     const cribTime = secondFeedEnd + FEED_TO_CRIB_GAP;
-    events.push({ t: cribTime, label: '🌙 In pack and play', note: 'Awake and calm — let her settle herself', type: 'moon' });
+    events.push({ t: cribTime, label: '🌙 In crib', type: 'moon' });
 
     // Render timeline
     document.getElementById('timeline').innerHTML = events.map(e => `
