@@ -405,6 +405,7 @@
   const DINNER_DUR   = 30;
   const BATH_DUR     = 15;
   const SHORT_NAP_WW_OFFSET = 20; // short nap → target WW is this much below the wake-window floor
+  const DINNER_ENERGY_OFFSET = 30; // she's not making the full calculated WW — burns extra energy at dinner
   const SECOND_FEED_DUR = 20; // second feed duration (now BLW dinner-adjacent, takes longer)
   const FEED_TO_CRIB_GAP = 5; // gap between end of second feed and crib (second feed to crib totals 25 min)
 
@@ -576,9 +577,11 @@
   // Returns the single target wake window minute based on nap quality
   function getTargetWW() {
     const [wwMin, wwMax] = getWW(ageWeeks);
-    if (napQuality === 'short')  return wwMin - SHORT_NAP_WW_OFFSET;
-    if (napQuality === 'long')   return wwMax;
-    return round5((wwMin + wwMax) / 2); // normal = midpoint
+    let target;
+    if (napQuality === 'short')  target = wwMin - SHORT_NAP_WW_OFFSET;
+    else if (napQuality === 'long')   target = wwMax;
+    else target = round5((wwMin + wwMax) / 2); // normal = midpoint
+    return target - DINNER_ENERGY_OFFSET;
   }
 
   function setNapQuality(q) {
